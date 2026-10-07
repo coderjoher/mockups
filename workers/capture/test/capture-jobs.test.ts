@@ -71,9 +71,12 @@ describe('[CE-10] three pages at a time per project', () => {
     expect(caps.every((c: any) => c.image_url)).toBe(true);
 
     // One job per page, and the site never saw more than three of its pages loading at once.
-    const jobs = await query("SELECT status FROM jobs WHERE type = 'capture'");
+    // The job row is marked done just after its last capture, so wait for it.
+    const jobs = await waitFor(async () => {
+      const rows = await query("SELECT status FROM jobs WHERE type = 'capture'");
+      return rows.every((j) => j.status === 'done') && rows;
+    });
     expect(jobs).toHaveLength(6);
-    expect(jobs.every((j) => j.status === 'done')).toBe(true);
     expect(slowStats.max).toBeLessThanOrEqual(3);
     expect(slowStats.max).toBeGreaterThan(1);
   });

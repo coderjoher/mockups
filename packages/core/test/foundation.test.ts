@@ -70,6 +70,12 @@ describe('[F-4] job queue', () => {
 
   it('runs a job of every type and mirrors queued -> running -> done into Postgres', async () => {
     const seen: string[] = [];
+    const ids: Record<string, string> = {};
+    // Enqueue first: with no worker running yet every job must sit in Postgres as queued.
+    for (const t of JOB_TYPES) {
+      ids[t] = await enqueue(t, { n: 1 });
+      expect((await getJob(ids[t]))!.status).toBe('queued');
+    }
     workers = JOB_TYPES.map((t) =>
       startWorker(t, async (data) => {
         const row = await getJob(data.jobId);
@@ -77,11 +83,6 @@ describe('[F-4] job queue', () => {
         return { ok: t };
       }),
     );
-    const ids: Record<string, string> = {};
-    for (const t of JOB_TYPES) {
-      ids[t] = await enqueue(t, { n: 1 });
-      expect((await getJob(ids[t]))!.status).toBe('queued');
-    }
     for (const t of JOB_TYPES) {
       const job = await waitFor(async () => {
         const j = await getJob(ids[t]);

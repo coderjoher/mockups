@@ -119,6 +119,14 @@ export const dynamicRoutes: Record<string, Route> = {
     slowStats.inflight--;
     return html(res, page(`Slow ${url.pathname}`, '<div style="height:600px;background:#0ea5e9"></div>'));
   },
+  // Phase 4: blocks real browsers on /members (like a bot check), so captures fail but the URL check passes.
+  botwall(req, res, url) {
+    const browser = !/MockupGenerator/.test(req.headers['user-agent'] ?? '');
+    if (url.pathname === '/members' && browser) return html(res, page('Access denied'), 403);
+    if (url.pathname === '/members') return html(res, page('Members'));
+    if (url.pathname === '/') return html(res, page('Botwall home', '<div style="height:900px;background:#7c3aed"></div>'));
+    return false;
+  },
   broken(_req, res, url) {
     if (url.pathname === '/json') {
       res.writeHead(200, { 'content-type': 'application/json' }).end('{}');

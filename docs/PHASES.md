@@ -175,6 +175,8 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 
 **Gate 4:** the user flow "Paste URL → Discover → Tick → Capture → (Retry or Upload)" works end-to-end in E2E tests.
 
+- [x] Gate 4 passed (`scripts/phase-gate.sh 4`).
+
 ---
 
 ## Phase 5: Mockup library and admin corner picker
