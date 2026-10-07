@@ -133,5 +133,10 @@
     "final": "Render full size",
     "download": "Download PNG",
     "change": "Choose another mockup"
+  },
+  "export": {
+    "title": "Download the set ({n} mockups)",
+    "zip": "Download ZIP",
+    "preparing": "Preparing ZIP…"
   }
 }

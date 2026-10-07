@@ -89,6 +89,12 @@ export const dynamicRoutes: Record<string, Route> = {
     }
     return html(res, 'nope', 404);
   },
+  // Phase 7: Arabic RTL site with a sitemap (pages are static files).
+  arabic(req, res, url) {
+    if (url.pathname === '/sitemap.xml') return xml(res, urlset(origin(req), ['/', '/about/', '/services/']));
+    if (url.pathname === '/robots.txt') return html(res, '', 404);
+    return false;
+  },
   // Phase 3: capture fixtures.
   tall(_req, res) {
     return html(res, page('Tall', '<div style="height:30000px;background:linear-gradient(#fff,#000)"></div>'));

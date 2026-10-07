@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { one, query } from '@mockups/core/db';
 import { getProject } from '@mockups/core/projects';
 import { createRender, defaultAssignments, loadRenderInputs, RenderError, renderWithUrls } from '@mockups/core/renders';
+import { createExport, exportStatus } from '@mockups/core/exports';
 import { HttpError, requireUser } from '../app';
 
 const isId = (id: string) => /^[0-9a-f-]{36}$/i.test(id);
@@ -44,6 +45,24 @@ export async function renderRoutes(app: FastifyInstance) {
     const project = await load(req);
     const rows = await query('SELECT * FROM renders WHERE project_id = $1 ORDER BY created_at DESC LIMIT 100', [project.id]);
     return { renders: await Promise.all(rows.map(renderWithUrls)) };
+  });
+
+  // EX-3: ZIP of the whole set (or the given renders) in the chosen formats.
+  app.post<{ Params: { id: string }; Body: { formats?: string[]; renderIds?: string[] } }>('/projects/:id/exports', async (req, reply) => {
+    const project = await load(req);
+    try {
+      return reply.status(202).send(await createExport(project.id, req.body?.formats ?? ['png'], req.body?.renderIds?.filter(isId)));
+    } catch (err) {
+      if (err instanceof RenderError) throw new HttpError(422, err.message, err.code);
+      throw err;
+    }
+  });
+
+  app.get<{ Params: { id: string; jobId: string } }>('/projects/:id/exports/:jobId', async (req) => {
+    const project = await load(req);
+    const status = isId(req.params.jobId) ? await exportStatus(req.params.jobId, project.id) : undefined;
+    if (!status) throw new HttpError(404, 'Export not found');
+    return { ...status, url: status.url ? `${status.url}&dl=1` : null };
   });
 
   app.get<{ Params: { renderId: string } }>('/renders/:renderId', async (req) => {

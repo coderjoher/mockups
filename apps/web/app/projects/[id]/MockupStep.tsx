@@ -4,6 +4,7 @@ import { api } from '@/lib/api';
 import { useT } from '@/lib/I18nProvider';
 import { MockupGrid } from '@/components/MockupGrid';
 import type { Capture } from './Gallery';
+import { ExportPanel } from './ExportPanel';
 
 type Assignments = Record<string, { captureId: string; scrollOffset: number }>;
 
@@ -26,6 +27,14 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const run = useRef({ cancelled: false });
+  const [setSize, setSetSize] = useState(0);
+
+  const loadSet = useCallback(async () => {
+    const { renders } = await api(`/projects/${projectId}/renders`);
+    const finals = renders.filter((r: any) => r.status === 'done' && !r.options?.preview);
+    setSetSize(new Set(finals.map((r: any) => `${r.mockup_id}:${JSON.stringify(r.assignments)}`)).size);
+  }, [projectId]);
+  useEffect(() => void loadSet(), [loadSet]);
 
   useEffect(() => {
     api(`/projects/${projectId}/captures`).then((r) => setCaptures(r.captures.filter((c: Capture) => c.status === 'done')));
@@ -77,6 +86,7 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
       const done = await waitForRender(render.id, { cancelled: false });
       if (done.status === 'failed') setError(done.error ?? 'Render failed');
       setFinal(done);
+      await loadSet();
     } catch (e: any) {
       setError(e.message);
     }
@@ -113,9 +123,10 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
               </label>
             ))}
             <button className="btn w-full justify-center" disabled={busy || !preview} onClick={renderFinal} data-testid="render-final">{busy ? t('mockup.rendering') : t('mockup.final')}</button>
-            {final?.urls?.png && (
-              <a className="btn-ghost w-full justify-center" href={final.urls.png} download data-testid="download-png">{t('mockup.download')}</a>
+            {final?.downloads?.png && (
+              <a className="btn-ghost w-full justify-center" href={final.downloads.png} download data-testid="download-png">{t('mockup.download')}</a>
             )}
+            <ExportPanel projectId={projectId} setSize={setSize} />
             <button className="btn-ghost w-full justify-center" onClick={() => setMockup(null)}>{t('mockup.change')}</button>
           </aside>
         </div>

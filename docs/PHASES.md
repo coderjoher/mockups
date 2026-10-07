@@ -258,6 +258,9 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 - All Phase 0–7 tests green.
 - Used on **3 real client projects**; track PRD metrics: URL → first mockup < 2 min, ≥ 85 % captures need no fallback, ≥ 90 % mockups used without retouching, ≥ 3 pages/project.
 
+- [x] Engineering gate passed (`scripts/phase-gate.sh 7`): URL → ZIP of a three-page set in ~16 s on fixtures, English and Arabic; Chromium, Firefox, WebKit and mobile smoke tests green.
+- [ ] Business gate (3 real client projects, PRD metrics) — for the BeCorp team; work on phases 8-10 continued on request without it.
+
 ---
 
 ## Phase 8: Polish A (rendering and capture)

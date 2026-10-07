@@ -24,7 +24,7 @@ export default defineConfig({
   globalSetup: './tests/e2e/global-setup.ts',
   use: { baseURL: 'http://127.0.0.1:3001', trace: 'retain-on-failure' },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] }, grepInvert: /@mobile/ },
     { name: 'firefox', use: { ...devices['Desktop Firefox'] }, grep: /@cross-browser/ },
     { name: 'webkit', use: { ...devices['Desktop Safari'] }, grep: /@cross-browser/ },
     { name: 'mobile', use: { ...devices['Pixel 7'] }, grep: /@mobile/ },

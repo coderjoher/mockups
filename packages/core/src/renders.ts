@@ -93,8 +93,13 @@ export async function createRender(projectId: string, mockupId: string, assignme
 export async function renderWithUrls(r: any) {
   const s = getStorage();
   const urls: Record<string, string> = {};
-  for (const [k, key] of Object.entries((r.outputs ?? {}) as Record<string, string>)) urls[k] = await s.signedUrl(key);
-  return { ...r, urls };
+  const downloads: Record<string, string> = {};
+  const { downloadName } = await import('./exports');
+  for (const [k, key] of Object.entries((r.outputs ?? {}) as Record<string, string>)) {
+    urls[k] = await s.signedUrl(key);
+    if (k !== 'preview' && r.status === 'done') downloads[k] = `${urls[k]}&dl=${encodeURIComponent(await downloadName(r.id, key.split('.').pop()!))}`;
+  }
+  return { ...r, urls, downloads };
 }
 
 export { DEVICES };
