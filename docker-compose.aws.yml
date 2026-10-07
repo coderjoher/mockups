@@ -1,0 +1,57 @@
+# AWS overlay: one EC2 instance runs the stack, files go to a real S3 bucket, Caddy serves HTTPS.
+# Usage (see docs/DEPLOY-AWS.md):
+#   docker compose -f docker-compose.yml -f docker-compose.aws.yml up -d --build
+# Needs a .env next to this file with DOMAIN, APP_SECRET, S3_BUCKET and S3_REGION.
+x-aws-env: &aws-env
+  DATABASE_URL: ${DATABASE_URL:-postgres://mockups:mockups@postgres:5432/mockups}
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: ""                    # empty = AWS S3
+  S3_BUCKET: ${S3_BUCKET:?set S3_BUCKET in .env}
+  S3_REGION: ${S3_REGION:?set S3_REGION in .env}
+  S3_ACCESS_KEY_ID: ""               # empty = use the EC2 instance role
+  S3_SECRET_ACCESS_KEY: ""
+  APP_SECRET: ${APP_SECRET:?set APP_SECRET in .env}
+  PUBLIC_API_URL: https://${DOMAIN:?set DOMAIN in .env}/api
+  SIGNUP_DISABLED: ${SIGNUP_DISABLED:-}
+
+services:
+  # MinIO is replaced by S3; these only start with --profile local-s3.
+  minio:
+    profiles: [local-s3]
+  minio-bucket:
+    profiles: [local-s3]
+
+  migrate:
+    environment: *aws-env
+  api:
+    environment: *aws-env
+    ports: !reset []
+    restart: unless-stopped
+  capture-worker:
+    environment: *aws-env
+    restart: unless-stopped
+  render-worker:
+    environment: *aws-env
+    restart: unless-stopped
+  web:
+    ports: !reset []
+    restart: unless-stopped
+  postgres:
+    restart: unless-stopped
+  redis:
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+
+  caddy:
+    image: caddy:2-alpine
+    environment:
+      DOMAIN: ${DOMAIN}
+    ports: ["80:80", "443:443"]
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+    depends_on: [web]
+    restart: unless-stopped
+
+volumes:
+  caddy-data:

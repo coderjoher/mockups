@@ -7,7 +7,7 @@ export const config = {
   publicApiUrl: process.env.PUBLIC_API_URL ?? 'http://127.0.0.1:4000',
   secret: process.env.APP_SECRET ?? 'dev-secret-change-me',
   s3: {
-    endpoint: process.env.S3_ENDPOINT,
+    endpoint: process.env.S3_ENDPOINT || undefined,
     region: process.env.S3_REGION ?? 'auto',
     bucket: process.env.S3_BUCKET ?? 'mockups',
     accessKeyId: process.env.S3_ACCESS_KEY_ID ?? '',

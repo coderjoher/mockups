@@ -56,13 +56,17 @@ export class LocalStorage implements Storage {
   }
 }
 
-/** S3-compatible object storage (Cloudflare R2, Backblaze B2, MinIO). */
+/** S3-compatible object storage (AWS S3, Cloudflare R2, Backblaze B2, MinIO). */
 export class S3Storage implements Storage {
   private client = new S3Client({
     endpoint: config.s3.endpoint,
     region: config.s3.region,
-    forcePathStyle: true,
-    credentials: { accessKeyId: config.s3.accessKeyId, secretAccessKey: config.s3.secretAccessKey },
+    // MinIO and other self-hosted endpoints need path-style URLs; AWS S3 prefers virtual-hosted.
+    forcePathStyle: Boolean(config.s3.endpoint),
+    // Without keys the SDK's default chain applies (e.g. an EC2 instance role on AWS).
+    credentials: config.s3.accessKeyId
+      ? { accessKeyId: config.s3.accessKeyId, secretAccessKey: config.s3.secretAccessKey }
+      : undefined,
   });
   async put(key: string, body: Buffer, contentType?: string) {
     await this.client.send(new PutObjectCommand({ Bucket: config.s3.bucket, Key: safeKey(key), Body: body, ContentType: contentType }));

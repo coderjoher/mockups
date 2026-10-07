@@ -20,13 +20,17 @@ Delivery plan and test gates: [`docs/PHASES.md`](docs/PHASES.md). Current phase:
 ```bash
 npm ci && pip install -r workers/render/requirements.txt
 sudo scripts/install-fonts.sh               # Arabic fonts for captures
-# Postgres on :5432 and Redis on :6379 (or `docker compose up postgres redis`)
+# Postgres on :5432 and Redis on :6379, e.g.:
+#   docker run -d -p 5432:5432 -e POSTGRES_HOST_AUTH_METHOD=trust -e POSTGRES_DB=mockups postgres:16-alpine
+#   docker run -d -p 6379:6379 redis:7-alpine
 npm run migrate && npm run seed              # admin@example.com / admin12345
 npm run seed:mockups                         # 12 placeholder mockup photos, published
 npm run dev:api & npm run dev:worker & npm run dev:render & npm run dev:web
 ```
 
 Or the whole stack: `docker compose up --build` → http://localhost:3000.
+
+Production on AWS (EC2 + S3 + HTTPS): [`docs/DEPLOY-AWS.md`](docs/DEPLOY-AWS.md).
 
 ## Tests and phase gates
 
@@ -56,7 +60,7 @@ Every requirement ID in `docs/phase-requirements.txt` must be named as `[ID]` in
 | Variable | Purpose |
 |---|---|
 | `APP_SECRET` | Signs sessions and file URLs |
-| `STORAGE_DRIVER=s3`, `S3_*` | Cloudflare R2 / Backblaze B2 / MinIO |
+| `STORAGE_DRIVER=s3`, `S3_*` | AWS S3 / Cloudflare R2 / Backblaze B2 / MinIO (leave `S3_ENDPOINT` empty for AWS; empty keys use the instance role) |
 | `RATE_LIMIT_PAGES_PER_HOUR` | Per-user page limit (default 50) |
 | `BILLING_WEBHOOK_SECRET` | HMAC secret for `POST /billing/webhook` (`x-billing-signature`) |
 | `SIGNUP_DISABLED=1` | Turn off self-service sign-up (internal-tool mode) |
