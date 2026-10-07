@@ -42,5 +42,25 @@
     "next": "التقاط {n} صفحات",
     "rediscover": "ابحث عن الصفحات مجدداً",
     "limit": "يمكنك تحديد {max} صفحة كحد أقصى لكل مشروع"
+  },
+  "capture": {
+    "title": "اللقطات",
+    "mode": "نوع اللقطة",
+    "fold": "الجزء الظاهر",
+    "full": "الصفحة كاملة",
+    "start": "التقاط الصفحات",
+    "progress": "تم التقاط {done} من {total}",
+    "device_desktop": "حاسوب",
+    "device_tablet": "جهاز لوحي",
+    "device_mobile": "هاتف",
+    "status_queued": "بالانتظار",
+    "status_running": "جارٍ الالتقاط…",
+    "status_done": "تم",
+    "status_failed": "فشل",
+    "back": "العودة إلى الصفحات",
+    "retry": "إعادة المحاولة",
+    "upload": "رفع لقطة شاشة خاصة بي",
+    "recapture": "إعادة الالتقاط",
+    "next": "اختر نموذجاً"
   }
 }

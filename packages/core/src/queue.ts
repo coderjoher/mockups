@@ -41,15 +41,22 @@ export interface JobRow {
   finished_at: Date | null;
 }
 
-export async function enqueue(type: JobType, payload: Record<string, unknown>, projectId: string | null = null): Promise<string> {
+export async function enqueue(
+  type: JobType,
+  payload: Record<string, unknown>,
+  projectId: string | null = null,
+  opts: { attempts?: number; beforePush?: (jobId: string) => Promise<void> } = {},
+): Promise<string> {
   const row = await one<JobRow>(
     'INSERT INTO jobs(type, project_id, payload) VALUES ($1, $2, $3) RETURNING id',
     [type, projectId, JSON.stringify(payload)],
   );
   const jobId = row!.id;
+  // Link any rows to the job before a worker can pick it up.
+  if (opts.beforePush) await opts.beforePush(jobId);
   await getQueue(type).add(type, { jobId, ...payload }, {
     jobId,
-    attempts: JOB_ATTEMPTS,
+    attempts: opts.attempts ?? JOB_ATTEMPTS,
     backoff: { type: 'exponential', delay: backoffMs() },
     removeOnComplete: 1000,
     removeOnFail: 1000,

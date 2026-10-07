@@ -1,0 +1,15 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Banners fixture</title>
+<style>
+  body{margin:0;background:#ffffff;font-family:sans-serif} header{position:fixed;top:0;left:0;right:0;height:60px;background:#111827;z-index:5}
+  main{padding-top:80px;height:3000px}
+  .magenta{background:#ff00ff !important}
+</style></head><body class="modal-open" style="overflow:hidden">
+<header></header>
+<main><h1>Real content</h1></main>
+<div id="onetrust-banner-sdk" class="magenta" style="position:fixed;bottom:0;left:0;right:0;height:180px;z-index:99">
+  We use cookies <button id="onetrust-accept-btn-handler">Accept</button></div>
+<div id="intercom-container" class="magenta" style="position:fixed;bottom:20px;right:20px;width:60px;height:60px;border-radius:30px;z-index:100"></div>
+<div class="crisp-client"><div class="magenta" style="position:fixed;bottom:20px;left:20px;width:60px;height:60px;z-index:100"></div></div>
+<div class="promo-layer magenta" style="position:fixed;top:15%;left:10%;width:80%;height:70%;z-index:50">Subscribe to our newsletter!</div>
+<script>document.getElementById('onetrust-accept-btn-handler').onclick = () => document.getElementById('onetrust-banner-sdk').remove();</script>
+</body></html>

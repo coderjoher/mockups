@@ -1,0 +1,37 @@
+{
+  "_comment": "CE-4: maintained list of overlays hidden before capture. Add selectors here; tests in workers/capture/test cover the categories.",
+  "consentAccept": [
+    "#onetrust-accept-btn-handler",
+    "#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowAll",
+    "#CybotCookiebotDialogBodyButtonAccept",
+    ".cky-btn-accept",
+    "#didomi-notice-agree-button",
+    ".qc-cmp2-summary-buttons button[mode='primary']",
+    "#truste-consent-button",
+    ".osano-cm-accept-all",
+    ".cmplz-accept",
+    ".iubenda-cs-accept-btn",
+    "[data-testid='uc-accept-all-button']",
+    ".fc-cta-consent"
+  ],
+  "cookieBanners": [
+    "#onetrust-consent-sdk", "#onetrust-banner-sdk", "#CybotCookiebotDialog", "#CybotCookiebotDialogBodyUnderlay",
+    ".qc-cmp2-container", "#qc-cmp2-container", "#didomi-host", ".osano-cm-window", "#truste-consent-track", ".truste_overlay",
+    ".cky-consent-container", ".cky-overlay", "#cmplz-cookiebanner-container", ".cmplz-cookiebanner", "#iubenda-cs-banner",
+    "#usercentrics-root", "#usercentrics-cmp-ui", ".fc-consent-root", "#cookie-law-info-bar", ".cli-modal", "#moove_gdpr_cookie_info_bar",
+    "#gdpr-cookie-message", ".cc-window", ".cc-banner", "#cookie-notice", "#cookieConsent", "#cookie-consent", ".cookie-consent",
+    ".cookie-banner", "#cookie-banner", ".cookies-banner", "[id^='cookie-banner']", "[class*='cookie-consent']", "[class*='CookieConsent']",
+    "[aria-label*='cookie' i][role='dialog']", "[aria-label*='cookie' i][role='region']", "#hs-eu-cookie-confirmation", ".termly-styles-root"
+  ],
+  "chatWidgets": [
+    "#intercom-container", ".intercom-lightweight-app", "#intercom-frame", "#drift-widget", "#drift-frame-controller", ".crisp-client",
+    "#tawkchat-container", "iframe[title*='chat' i]", "#launcher", "iframe#webWidget", "#hubspot-messages-iframe-container",
+    "#tidio-chat", "#chat-widget-container", ".fb_dialog", ".fb-customerchat", "[class*='whatsapp-float']", "[class*='WhatsappFloat']",
+    "#freshworks-container", "#fc_frame", ".zsiq_floatmain", "#zsiq_float", "#livechat-compact-container", ".olark-launcher", "#gorgias-chat-container"
+  ],
+  "popups": [
+    ".klaviyo-form[role='dialog']", ".needsclick.kl-private-reset-css-Xuajs1", "[class*='newsletter-popup']", "[class*='newsletter-modal']",
+    "#mc_embed_signup_popup", ".mc-modal", ".mc-modal-bg", ".privy-popup-container", ".omniconvert-popup", ".optinmonster-popup",
+    "[id^='om-'][class*='om-holder']", ".sumome-popup", ".popup-overlay", "#popup-overlay", ".pum-overlay", ".elementor-popup-modal"
+  ]
+}

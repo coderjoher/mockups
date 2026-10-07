@@ -154,6 +154,8 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 
 **Gate 3:** all fixture captures match expectations, Arabic renders correctly, timing targets met.
 
+- [x] Gate 3 passed (`scripts/phase-gate.sh 3`). Timings on the dev container: 1 page x 3 devices and 10 pages x 3 devices both well inside the targets (see the [P] test output).
+
 ---
 
 ## Phase 4: Results gallery and upload fallback

@@ -1,0 +1,19 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Animated fixture</title>
+<style>
+  body{margin:0}
+  @keyframes slide{from{transform:translateX(0)}to{transform:translateX(600px)}}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .mover{width:120px;height:120px;background:#2563eb;animation:slide 1.3s linear infinite alternate}
+  .spinner{width:80px;height:80px;border:10px solid #ddd;border-top-color:#e11d48;border-radius:50%;animation:spin .7s linear infinite;margin:20px}
+  .fade{opacity:0;animation:fadein 2s ease forwards}
+  @keyframes fadein{to{opacity:1}}
+  .slide{height:200px;font-size:60px;color:#fff;display:flex;align-items:center;justify-content:center}
+</style></head><body>
+<div class="mover"></div><div class="spinner"></div>
+<h1 class="fade">Faded-in heading</h1>
+<div id="carousel" class="slide" style="background:#16a34a">Slide 1</div>
+<script>
+  const colors = ['#16a34a', '#9333ea', '#ea580c', '#0891b2'];
+  let i = 0;
+  setInterval(() => { i = (i + 1) % colors.length; const c = document.getElementById('carousel'); c.style.background = colors[i]; c.textContent = 'Slide ' + (i + 1); }, 60);
+</script></body></html>
