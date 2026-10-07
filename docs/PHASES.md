@@ -287,6 +287,8 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 
 **Gate 8:** tests green; Phase 0–7 suites still green.
 
+- [x] Gate 8 passed (`scripts/phase-gate.sh 8`).
+
 ---
 
 ## Phase 9: Polish B (export, sharing, convenience)

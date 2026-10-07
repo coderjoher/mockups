@@ -28,6 +28,15 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
   const [error, setError] = useState('');
   const run = useRef({ cancelled: false });
   const [setSize, setSetSize] = useState(0);
+  const [note, setNote] = useState('');
+  const [layoutRender, setLayoutRender] = useState<any>(null);
+  const [style] = useState<Record<string, unknown>>({});
+  const home = useMemo(() => {
+    const first = captures.find((c) => c.mode === 'fold');
+    const out: Record<string, Capture> = {};
+    for (const c of captures) if (first && c.page_id === first.page_id && c.mode === 'fold') out[c.device] = c;
+    return out;
+  }, [captures]);
 
   const loadSet = useCallback(async () => {
     const { renders } = await api(`/projects/${projectId}/renders`);
@@ -78,6 +87,48 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
     void renderPreview(mockup, next);
   }
 
+  // CR-3: which part of a full-page capture a screen shows.
+  function scroll(screenKey: string, scrollOffset: number, commit: boolean) {
+    const next = { ...assignments, [screenKey]: { ...assignments[screenKey], scrollOffset } };
+    setAssignments(next);
+    if (commit) void renderPreview(mockup, next);
+  }
+
+  // CR-4: the same mockup for every captured page, added to the set.
+  async function batch() {
+    setBusy(true);
+    setError('');
+    try {
+      const { renders } = await api(`/projects/${projectId}/batch`, { method: 'POST', json: { mockupId: mockup.id } });
+      await Promise.all(renders.map((r: any) => waitForRender(r.id, { cancelled: false })));
+      setNote(t('mockup.batchDone', { n: renders.length }));
+      await loadSet();
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setBusy(false);
+  }
+
+  // CR-5: photo-free layouts.
+  async function layout(kind: 'grid' | 'tall') {
+    setBusy(true);
+    setError('');
+    try {
+      const ids = kind === 'grid'
+        ? captures.filter((c) => c.device === 'desktop' && c.mode === 'fold').map((c) => c.id)
+        : captures.filter((c) => c.mode === 'full').slice(0, 1).map((c) => c.id);
+      if (!ids.length) throw new Error(kind === 'tall' ? t('mockup.tallNeedsFull') : t('mockup.rendering'));
+      const { render } = await api(`/projects/${projectId}/layouts`, { method: 'POST', json: { layout: kind, captureIds: ids, ...style } });
+      const done = await waitForRender(render.id, { cancelled: false });
+      if (done.status === 'failed') setError(done.error ?? 'Render failed');
+      setLayoutRender(done);
+      await loadSet();
+    } catch (e: any) {
+      setError(e.message);
+    }
+    setBusy(false);
+  }
+
   async function renderFinal() {
     setBusy(true);
     setError('');
@@ -120,8 +171,27 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
                 <select className="input mt-1" value={assignments[s.screen_key]?.captureId ?? ''} onChange={(e) => assign(s.screen_key, e.target.value)} data-testid={`assign-${s.screen_key}`}>
                   {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                 </select>
+                {(() => {
+                  const cap = captures.find((c) => c.id === assignments[s.screen_key]?.captureId);
+                  if (!cap || cap.mode !== 'full') return null;
+                  return (
+                    <span className="mt-2 block">
+                      {t('mockup.scroll', { screen: s.screen_key })}
+                      <input
+                        type="range" min={0} max={Math.max(0, cap.height - 1000)} step={50} className="w-full"
+                        value={assignments[s.screen_key]?.scrollOffset ?? 0}
+                        onChange={(e) => scroll(s.screen_key, Number(e.target.value), false)}
+                        onPointerUp={(e) => scroll(s.screen_key, Number((e.target as HTMLInputElement).value), true)}
+                        onKeyUp={(e) => scroll(s.screen_key, Number((e.target as HTMLInputElement).value), true)}
+                        data-testid={`scroll-${s.screen_key}`}
+                      />
+                    </span>
+                  );
+                })()}
               </label>
             ))}
+            <button className="btn-ghost w-full justify-center" disabled={busy} onClick={batch} data-testid="batch">{t('mockup.batch')}</button>
+            {note && <p className="muted text-sm" data-testid="batch-note">{note}</p>}
             <button className="btn w-full justify-center" disabled={busy || !preview} onClick={renderFinal} data-testid="render-final">{busy ? t('mockup.rendering') : t('mockup.final')}</button>
             {final?.downloads?.png && (
               <a className="btn-ghost w-full justify-center" href={final.downloads.png} download data-testid="download-png">{t('mockup.download')}</a>
@@ -131,7 +201,23 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
           </aside>
         </div>
       )}
-      {!mockup && <MockupGrid onPick={pick} />}
+      {!mockup && (
+        <>
+          <MockupGrid onPick={pick} homeCaptures={home} />
+          <div className="card space-y-2 p-3" data-testid="layouts">
+            <h3 className="font-semibold">{t('mockup.layouts')}</h3>
+            <div className="flex flex-wrap gap-2">
+              <button className="btn-ghost" disabled={busy} onClick={() => layout('grid')} data-testid="layout-grid">{t('mockup.grid')}</button>
+              <button className="btn-ghost" disabled={busy} onClick={() => layout('tall')} data-testid="layout-tall">{t('mockup.tall')}</button>
+            </div>
+            {layoutRender?.urls?.png && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={layoutRender.urls.png} alt="" className="max-h-96 w-auto rounded border border-[var(--line)]" data-testid="layout-result" />
+            )}
+            <ExportPanel projectId={projectId} setSize={setSize} />
+          </div>
+        </>
+      )}
     </section>
   );
 }

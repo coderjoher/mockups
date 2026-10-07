@@ -12,6 +12,8 @@ export function Checklist({ projectId, onNext }: { projectId: string; onNext: (p
   const [pages, setPages] = useState<Page[]>([]);
   const [discovery, setDiscovery] = useState<any>({ status: 'queued' });
   const [q, setQ] = useState('');
+  const [lang, setLang] = useState('');
+  const [open, setOpen] = useState<Record<string, boolean>>({});
   const [newUrl, setNewUrl] = useState('');
   const [error, setError] = useState('');
 
@@ -24,10 +26,26 @@ export function Checklist({ projectId, onNext }: { projectId: string; onNext: (p
   const running = discovery?.status === 'queued' || discovery?.status === 'running';
   usePoll(load, 1000, running);
 
+  const languages = useMemo(() => [...new Set(pages.map((p) => p.lang).filter(Boolean))] as string[], [pages]);
   const visible = useMemo(() => {
     const needle = q.trim().toLowerCase();
-    return needle ? pages.filter((p) => p.title.toLowerCase().includes(needle) || p.url.toLowerCase().includes(needle)) : pages;
-  }, [pages, q]);
+    let list = needle ? pages.filter((p) => p.title.toLowerCase().includes(needle) || p.url.toLowerCase().includes(needle)) : pages;
+    if (lang) list = list.filter((p) => p.lang === lang);
+    // PD-6: one sample per template group (expandable); searching shows every match.
+    if (needle) return list;
+    const seen = new Map<string, number>();
+    return list.filter((p) => {
+      if (!p.template_group || p.selected || open[p.template_group]) return true;
+      const n = (seen.get(p.template_group) ?? 0) + 1;
+      seen.set(p.template_group, n);
+      return n === 1;
+    });
+  }, [pages, q, lang, open]);
+  const groupSize = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const p of pages) if (p.template_group) m.set(p.template_group, (m.get(p.template_group) ?? 0) + 1);
+    return m;
+  }, [pages]);
   const selected = pages.filter((p) => p.selected);
 
   async function toggle(page: Page) {
@@ -70,7 +88,15 @@ export function Checklist({ projectId, onNext }: { projectId: string; onNext: (p
           {t('pages.capped', { reason: t(`pages.reason_${discovery.capped}`) })}
         </p>
       )}
-      <input className="input" placeholder={t('pages.search')} value={q} onChange={(e) => setQ(e.target.value)} data-testid="page-search" />
+      <div className="flex gap-2">
+        <input className="input" placeholder={t('pages.search')} value={q} onChange={(e) => setQ(e.target.value)} data-testid="page-search" />
+        {languages.length > 1 && (
+          <select className="input w-auto" value={lang} onChange={(e) => setLang(e.target.value)} data-testid="lang-filter" aria-label={t('pages.language')}>
+            <option value="">{t('pages.allLanguages')}</option>
+            {languages.map((l) => <option key={l} value={l}>{l.toUpperCase()}</option>)}
+          </select>
+        )}
+      </div>
       {error && <p role="alert" data-testid="pages-error" className="text-red-600">{error}</p>}
       <ul className="card divide-y divide-[var(--line)]" data-testid="page-list">
         {visible.map((p) => (
@@ -80,8 +106,16 @@ export function Checklist({ projectId, onNext }: { projectId: string; onNext: (p
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={p.favicon_url ?? ''} alt="" width={16} height={16} className="h-4 w-4" onError={(e) => (e.currentTarget.style.visibility = 'hidden')} />
               <span className="font-medium">{p.title}</span>
+              {p.lang && <span className="rounded bg-gray-100 px-1.5 text-xs uppercase">{p.lang}</span>}
               <span className="muted ms-auto truncate text-sm" dir="ltr">{new URL(p.url).pathname}</span>
             </label>
+            {p.template_group && !q && (groupSize.get(p.template_group) ?? 0) > 1 && (
+              <button className="ms-11 mb-2 text-xs text-[var(--accent)] underline" data-testid="group-toggle" onClick={() => setOpen((o) => ({ ...o, [p.template_group!]: !o[p.template_group!] }))}>
+                {open[p.template_group]
+                  ? t('pages.groupCollapse', { group: p.template_group })
+                  : t('pages.groupMore', { n: (groupSize.get(p.template_group) ?? 1) - 1, group: p.template_group })}
+              </button>
+            )}
           </li>
         ))}
       </ul>

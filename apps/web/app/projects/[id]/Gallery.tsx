@@ -13,6 +13,9 @@ export function Gallery({ projectId, onBack, onNext }: { projectId: string; onBa
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [mode, setMode] = useState<'fold' | 'full'>('fold');
   const [error, setError] = useState('');
+  const [dark, setDark] = useState(false);
+  const [hide, setHide] = useState('');
+  const [delay, setDelay] = useState(0);
 
   const load = useCallback(async () => setCaptures((await api(`/projects/${projectId}/captures`)).captures), [projectId]);
   useEffect(() => void load(), [load]);
@@ -34,7 +37,8 @@ export function Gallery({ projectId, onBack, onNext }: { projectId: string; onBa
   async function start() {
     setError('');
     try {
-      await api(`/projects/${projectId}/captures`, { method: 'POST', json: { mode } });
+      const options = { dark, hideSelectors: hide.split(',').map((s) => s.trim()).filter(Boolean), delayMs: delay * 1000 };
+      await api(`/projects/${projectId}/captures`, { method: 'POST', json: { mode, options } });
       await load();
     } catch (e: any) {
       setError(e.message);
@@ -55,6 +59,14 @@ export function Gallery({ projectId, onBack, onNext }: { projectId: string; onBa
         </label>
         <button className="btn" onClick={start} disabled={busy} data-testid="start-capture">{t('capture.start')}</button>
       </div>
+      <details className="card p-3 text-sm" data-testid="capture-options">
+        <summary className="cursor-pointer font-medium">{t('capture.options')}</summary>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <label className="flex items-center gap-2"><input type="checkbox" checked={dark} onChange={(e) => setDark(e.target.checked)} data-testid="opt-dark" />{t('capture.dark')}</label>
+          <label>{t('capture.hide')}<input className="input mt-1" dir="ltr" value={hide} onChange={(e) => setHide(e.target.value)} placeholder=".promo, #newsletter" data-testid="opt-hide" /></label>
+          <label>{t('capture.delay')}<input className="input mt-1" type="number" min={0} max={10} value={delay} onChange={(e) => setDelay(Number(e.target.value))} data-testid="opt-delay" /></label>
+        </div>
+      </details>
       {error && <p role="alert" className="text-red-600" data-testid="capture-error">{error}</p>}
       {shown.length > 0 && <p data-testid="capture-progress" className="muted text-sm">{t('capture.progress', { done, total: shown.length })}</p>}
       <div className="card overflow-x-auto">

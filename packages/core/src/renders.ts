@@ -103,3 +103,62 @@ export async function renderWithUrls(r: any) {
 }
 
 export { DEVICES };
+/** CR-4 batch mode: one mockup applied to every captured page; every screen of a render shows that page. */
+export async function createBatch(projectId: string, mockupId: string, formats: string[] = ['png']) {
+  const { screens, captures } = await loadRenderInputs(projectId, mockupId);
+  const pageIds = [...new Set(captures.map((c) => c.page_id))];
+  if (!pageIds.length) throw new RenderError('Capture at least one page first', 'no_captures');
+  const out = [];
+  for (const pageId of pageIds) {
+    const assignments = defaultAssignments(screens, captures, [pageId]);
+    const render = (await one(
+      'INSERT INTO renders(project_id, mockup_id, assignments, options) VALUES ($1,$2,$3,$4) RETURNING *',
+      [projectId, mockupId, JSON.stringify(assignments), JSON.stringify({ preview: false, formats, batch: true })],
+    ))!;
+    await enqueue('render', { kind: 'render', renderId: render.id }, projectId);
+    out.push(render);
+  }
+  return out;
+}
+
+export const LAYOUTS = ['grid', 'tall'] as const;
+
+/** CR-5 / CX-2: photo-free layouts (grid collage of pages, or one full page in a tall frame). */
+export async function createLayoutRender(
+  projectId: string,
+  layout: string,
+  captureIds: string[],
+  style: { bg?: unknown; padding?: unknown; shadow?: unknown; preview?: boolean; formats?: string[] } = {},
+) {
+  if (!LAYOUTS.includes(layout as any)) throw new RenderError('layout must be grid or tall');
+  const caps = await query("SELECT c.id FROM captures c JOIN pages p ON p.id = c.page_id WHERE p.project_id = $1 AND c.status = 'done' AND c.id = ANY($2::uuid[])", [projectId, captureIds]);
+  const ordered = captureIds.filter((id) => caps.some((c) => c.id === id));
+  if (!ordered.length) throw new RenderError('Pick at least one finished capture');
+  if (layout === 'tall' && ordered.length !== 1) throw new RenderError('The tall frame shows one page');
+  const options: Record<string, unknown> = { preview: !!style.preview, formats: style.formats ?? ['png'] };
+  if (style.bg !== undefined) options.bg = validateBackground(style.bg);
+  if (style.padding !== undefined) options.padding = clampInt(style.padding, 0, 400, 'padding');
+  if (style.shadow !== undefined) options.shadow = clampNum(style.shadow, 0, 1, 'shadow');
+  const render = (await one(
+    'INSERT INTO renders(project_id, mockup_id, layout, assignments, options) VALUES ($1,NULL,$2,$3,$4) RETURNING *',
+    [projectId, layout, JSON.stringify({ pages: ordered.slice(0, 12).map((captureId) => ({ captureId })) }), JSON.stringify(options)],
+  ))!;
+  const jobId = await enqueue('render', { kind: 'render', renderId: render.id }, projectId);
+  return { render, jobId };
+}
+
+const HEX = /^#[0-9a-f]{6}$/i;
+/** CX-2 background: solid colour or two-colour gradient. */
+export function validateBackground(bg: any): Record<string, unknown> {
+  if (bg?.type === 'solid' && HEX.test(bg.colour)) return { type: 'solid', colour: bg.colour };
+  if (bg?.type === 'gradient' && HEX.test(bg.from) && HEX.test(bg.to)) return { type: 'gradient', from: bg.from, to: bg.to, angle: clampNum(bg.angle ?? 135, 0, 360, 'angle') };
+  throw new RenderError('Background must be a #rrggbb colour or a gradient between two colours');
+}
+function clampNum(v: unknown, min: number, max: number, name: string): number {
+  const n = Number(v);
+  if (!Number.isFinite(n) || n < min || n > max) throw new RenderError(`${name} must be between ${min} and ${max}`);
+  return n;
+}
+function clampInt(v: unknown, min: number, max: number, name: string): number {
+  return Math.round(clampNum(v, min, max, name));
+}

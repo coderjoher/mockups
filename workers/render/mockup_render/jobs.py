@@ -9,6 +9,7 @@ from psycopg.rows import dict_row
 from . import config
 from .storage import get_storage
 from .registry import handler
+from .layouts import grid_collage, tall_frame
 from .render import Assignment, Scene, Screen, compose
 
 THUMB_LONG_SIDE = 800
@@ -102,20 +103,26 @@ def render_job(data):
             return {"skipped": "render deleted"}
         c.execute("UPDATE renders SET status = 'running', error = NULL WHERE id = %s", (render_id,))
         try:
-            mockup = c.execute("SELECT * FROM mockups WHERE id = %s", (r["mockup_id"],)).fetchone()
-            if not mockup:
-                raise ValueError("The mockup was deleted")
             opts = r["options"] or {}
-            scene = build_scene(c, mockup, opts.get("overlay", True), opts.get("lightMap", True))
-            assignments = {}
-            for screen_key, a in (r["assignments"] or {}).items():
-                cap = c.execute("SELECT image_key FROM captures WHERE id = %s AND status = 'done'", (a["captureId"],)).fetchone()
-                if cap and cap["image_key"]:
-                    assignments[screen_key] = Assignment(decode(storage.get(cap["image_key"]), cv2.IMREAD_UNCHANGED), int(a.get("scrollOffset") or 0))
-            h, w = scene.photo.shape[:2]
             preview = bool(opts.get("preview"))
-            scale = min(1.0, PREVIEW_LONG_SIDE / max(w, h)) if preview else 1.0
-            out = compose(scene, assignments, scale)
+            if r["layout"] in ("grid", "tall"):
+                out = render_layout(c, r, opts)
+                if preview and max(out.shape[:2]) > PREVIEW_LONG_SIDE:
+                    s = PREVIEW_LONG_SIDE / max(out.shape[:2])
+                    out = cv2.resize(out, (round(out.shape[1] * s), round(out.shape[0] * s)), interpolation=cv2.INTER_AREA)
+            else:
+                mockup = c.execute("SELECT * FROM mockups WHERE id = %s", (r["mockup_id"],)).fetchone()
+                if not mockup:
+                    raise ValueError("The mockup was deleted")
+                scene = build_scene(c, mockup, opts.get("overlay", True), opts.get("lightMap", True))
+                assignments = {}
+                for screen_key, a in (r["assignments"] or {}).items():
+                    cap = c.execute("SELECT image_key FROM captures WHERE id = %s AND status = 'done'", (a["captureId"],)).fetchone()
+                    if cap and cap["image_key"]:
+                        assignments[screen_key] = Assignment(decode(storage.get(cap["image_key"]), cv2.IMREAD_UNCHANGED), int(a.get("scrollOffset") or 0))
+                h, w = scene.photo.shape[:2]
+                scale = min(1.0, PREVIEW_LONG_SIDE / max(w, h)) if preview else 1.0
+                out = compose(scene, assignments, scale)
             outputs = {}
             if preview:
                 key = f"renders/{r['project_id']}/{render_id}/preview.jpg"
@@ -137,3 +144,20 @@ def render_job(data):
 
 
 CONTENT_TYPES = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}
+
+
+def render_layout(c, r, opts) -> np.ndarray:
+    """CR-5 / CX-2: photo-free layouts. assignments = {"pages": [{"captureId": ...}, ...]}."""
+    storage = get_storage()
+    ids = [p["captureId"] for p in (r["assignments"] or {}).get("pages", [])]
+    images = []
+    for cid in ids:
+        cap = c.execute("SELECT image_key FROM captures WHERE id = %s AND status = 'done'", (cid,)).fetchone()
+        if cap and cap["image_key"]:
+            images.append(decode(storage.get(cap["image_key"]), cv2.IMREAD_COLOR))
+    if not images:
+        raise ValueError("No captured pages to lay out")
+    style = {k: opts[k] for k in ("padding", "shadow", "bg") if k in opts}
+    if r["layout"] == "tall":
+        return tall_frame(images[0], **style)
+    return grid_collage(images, **style)

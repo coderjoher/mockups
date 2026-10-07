@@ -27,9 +27,9 @@ export async function pageRoutes(app: FastifyInstance) {
     return { jobId: await startDiscovery(project.id, req.user!.id, options) };
   });
 
-  app.get<{ Params: { id: string }; Querystring: { q?: string } }>('/projects/:id/pages', async (req) => {
+  app.get<{ Params: { id: string }; Querystring: { q?: string; lang?: string } }>('/projects/:id/pages', async (req) => {
     const project = await load(req);
-    return { discovery: project.discovery, pages: await listPages(project.id, req.query.q) };
+    return { discovery: project.discovery, pages: await listPages(project.id, req.query.q, req.query.lang) };
   });
 
   // PD-7: add a page by hand. It goes through the same normalisation and SSRF guard.

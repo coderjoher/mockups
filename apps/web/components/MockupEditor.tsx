@@ -38,6 +38,22 @@ export function MockupEditor({ id }: { id: string }) {
     }
   }
 
+  async function uploadAsset(kind: 'overlay' | 'lightmap', file: File | null) {
+    setError('');
+    try {
+      let key: string | null = null;
+      if (file) {
+        const form = new FormData();
+        form.append('file', file);
+        key = (await api(`/admin/mockups/${id}/assets/${kind}`, { method: 'POST', body: form })).key;
+      }
+      const r = await api(`/admin/mockups/${id}`, { method: 'PATCH', json: { [kind === 'overlay' ? 'overlay_key' : 'light_map_key']: key } });
+      setMockup(r.mockup);
+    } catch (err: any) {
+      setError(err.message);
+    }
+  }
+
   async function setStatus(action: 'publish' | 'unpublish') {
     setError('');
     try {
@@ -63,6 +79,22 @@ export function MockupEditor({ id }: { id: string }) {
       </div>
       {error && <p role="alert" className="text-red-600" data-testid="editor-error">{error}</p>}
       <CornerPicker mockup={mockup} onSaved={setMockup} />
+      <div className="card grid gap-3 p-4 sm:grid-cols-2" data-testid="layers">
+        {(['overlay', 'lightmap'] as const).map((kind) => {
+          const url = kind === 'overlay' ? mockup.overlay_url : mockup.light_map_url;
+          return (
+            <div key={kind} className="space-y-1 text-sm">
+              <div className="font-medium">{t(kind === 'overlay' ? 'admin.overlay' : 'admin.lightMap')}</div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              {url && <img src={url} alt="" className="h-20 rounded border border-[var(--line)] bg-[repeating-conic-gradient(#eee_0_25%,#fff_0_50%)] bg-[length:16px_16px]" />}
+              <div className="flex items-center gap-2">
+                <input type="file" accept={kind === 'overlay' ? 'image/png' : 'image/png,image/jpeg'} onChange={(e) => uploadAsset(kind, e.target.files?.[0] ?? null)} data-testid={`upload-${kind}`} />
+                {url && <button className="btn-ghost text-xs" onClick={() => uploadAsset(kind, null)}>{t('admin.remove')}</button>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
       <form onSubmit={saveDetails} className="card grid gap-3 p-4 sm:grid-cols-2" data-testid="details-form">
         <h2 className="text-lg font-semibold sm:col-span-2">{t('admin.details')}</h2>
         <label className="text-sm">{t('admin.titleField')}<input name="title" className="input mt-1" defaultValue={mockup.title} /></label>

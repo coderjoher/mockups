@@ -21,6 +21,12 @@ export async function renderNameParts(renderId: string): Promise<{ site: string;
     [renderId],
   );
   if (!r) throw new RenderError('Render not found', 'not_found');
+  if (r.layout && r.layout !== 'mockup') {
+    const first = r.assignments?.pages?.[0]?.captureId;
+    const pg = first ? await one('SELECT pg.title, pg.url FROM captures c JOIN pages pg ON pg.id = c.page_id WHERE c.id = $1', [first]) : undefined;
+    const many = (r.assignments?.pages?.length ?? 0) > 1;
+    return { site: siteName(r.root_url), page: many ? 'all-pages' : pg?.title || 'page', device: 'layout', mockup: r.layout === 'grid' ? 'grid' : 'tall-frame' };
+  }
   const screens = await query('SELECT screen_key, device, corners FROM screens WHERE mockup_id = $1', [r.mockup_id]);
   const main = [...screens].sort((a, b) => area(b.corners) - area(a.corners))[0];
   const devices = new Set(screens.map((s) => s.device));

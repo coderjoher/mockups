@@ -41,7 +41,11 @@
     "selected": "{n} / {max} selected",
     "next": "Capture {n} pages",
     "rediscover": "Find pages again",
-    "limit": "You can select up to {max} pages per project"
+    "limit": "You can select up to {max} pages per project",
+    "language": "Language",
+    "allLanguages": "All languages",
+    "groupMore": "+{n} more like {group}",
+    "groupCollapse": "Show fewer {group}"
   },
   "capture": {
     "title": "Captures",
@@ -61,7 +65,11 @@
     "retry": "Retry",
     "upload": "Upload my own screenshot",
     "recapture": "Recapture",
-    "next": "Choose a mockup"
+    "next": "Choose a mockup",
+    "options": "Capture options",
+    "dark": "Dark mode",
+    "hide": "Hide elements (CSS selectors)",
+    "delay": "Extra delay (seconds)"
   },
   "picker": {
     "click": "Click the {corner} corner of screen {screen}",
@@ -105,7 +113,8 @@
     "orientation_landscape": "Landscape",
     "orientation_portrait": "Portrait",
     "orientation_square": "Square",
-    "search": "Search mockups"
+    "search": "Search mockups",
+    "livePreview": "Preview with your home page"
   },
   "admin": {
     "title": "Mockup photos",
@@ -123,7 +132,10 @@
     "attribution": "Attribution text",
     "attributionRequired": "Licence requires attribution",
     "saveDetails": "Save details",
-    "back": "All mockup photos"
+    "back": "All mockup photos",
+    "overlay": "Overlay PNG (glass reflection, hand)",
+    "lightMap": "Light map (multiplied over screens)",
+    "remove": "Remove"
   },
   "mockup": {
     "title": "Mockup",
@@ -132,7 +144,14 @@
     "screen": "Screen {screen} ({device})",
     "final": "Render full size",
     "download": "Download PNG",
-    "change": "Choose another mockup"
+    "change": "Choose another mockup",
+    "scroll": "Scroll position on {screen}",
+    "batch": "Apply to every page",
+    "batchDone": "{n} mockups added to the set",
+    "layouts": "Layouts without a photo",
+    "grid": "Grid of all pages",
+    "tall": "Tall full-page frame",
+    "tallNeedsFull": "Capture a page in full-page mode for the tall frame"
   },
   "export": {
     "title": "Download the set ({n} mockups)",

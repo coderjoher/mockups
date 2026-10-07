@@ -6,6 +6,7 @@ import { titleFromPath, upsertPages } from '@mockups/core/pages';
 import { logDomain } from '@mockups/core/ratelimit';
 import { safeFetch } from '@mockups/core/ssrf';
 import { normaliseUrl, sameSite } from '@mockups/core/url';
+import { detectLanguage, templateGroups } from '@mockups/core/grouping';
 
 export const DEFAULT_MAX_URLS = 200;
 export const DEFAULT_TIME_LIMIT_MS = 30_000;
@@ -211,9 +212,16 @@ export async function discoverProject(data: { projectId: string; userId?: string
   try {
     const res = await discoverSite(project.root_url, data.options);
     await logDomain(data.userId ?? project.owner_id, project.root_url, 'discover', project.id);
+    const groups = templateGroups(res.pages.map((p) => p.url));
     await upsertPages(
       project.id,
-      res.pages.map((p) => ({ url: p.url, title: p.title, favicon_url: res.favicon, lang: p.lang ?? null })),
+      res.pages.map((p) => ({
+        url: p.url,
+        title: p.title,
+        favicon_url: res.favicon,
+        template_group: groups.get(p.url) ?? null,
+        lang: detectLanguage(p.url, res.rootAlternates, p.lang),
+      })),
     );
     const summary = { status: 'done', source: res.source, found: res.pages.length, capped: res.capped, elapsedMs: res.elapsedMs, finishedAt: new Date() };
     await query('UPDATE projects SET discovery = $2 WHERE id = $1', [project.id, JSON.stringify(summary)]);

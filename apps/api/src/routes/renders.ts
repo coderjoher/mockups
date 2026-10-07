@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { one, query } from '@mockups/core/db';
 import { getProject } from '@mockups/core/projects';
-import { createRender, defaultAssignments, loadRenderInputs, RenderError, renderWithUrls } from '@mockups/core/renders';
+import { createBatch, createLayoutRender, createRender, defaultAssignments, loadRenderInputs, RenderError, renderWithUrls } from '@mockups/core/renders';
 import { createExport, exportStatus } from '@mockups/core/exports';
 import { HttpError, requireUser } from '../app';
 
@@ -37,6 +37,31 @@ export async function renderRoutes(app: FastifyInstance) {
       return reply.status(202).send({ render, jobId });
     } catch (err) {
       if (err instanceof RenderError) throw new HttpError(err.code === 'not_found' ? 404 : 422, err.message, err.code);
+      throw err;
+    }
+  });
+
+  // CR-4: one mockup for every captured page.
+  app.post<{ Params: { id: string }; Body: { mockupId?: string; formats?: string[] } }>('/projects/:id/batch', async (req, reply) => {
+    const project = await load(req);
+    if (!isId(req.body?.mockupId ?? '')) throw new HttpError(400, 'mockupId is required');
+    try {
+      const formats = (req.body?.formats ?? ['png']).filter((f) => ['png', 'webp', 'jpg'].includes(f));
+      return reply.status(202).send({ renders: await createBatch(project.id, req.body!.mockupId!, formats.length ? formats : ['png']) });
+    } catch (err) {
+      if (err instanceof RenderError) throw new HttpError(err.code === 'not_found' ? 404 : 422, err.message, err.code);
+      throw err;
+    }
+  });
+
+  // CR-5: photo-free layouts.
+  app.post<{ Params: { id: string }; Body: { layout?: string; captureIds?: string[]; bg?: unknown; padding?: unknown; shadow?: unknown; preview?: boolean } }>('/projects/:id/layouts', async (req, reply) => {
+    const project = await load(req);
+    const { layout = '', captureIds = [], ...style } = req.body ?? {};
+    try {
+      return reply.status(202).send(await createLayoutRender(project.id, layout, (Array.isArray(captureIds) ? captureIds : []).filter(isId), style));
+    } catch (err) {
+      if (err instanceof RenderError) throw new HttpError(422, err.message, err.code);
       throw err;
     }
   });

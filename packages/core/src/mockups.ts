@@ -90,11 +90,13 @@ export async function updateMockupMeta(id: string, input: Record<string, any>): 
     licence_type: has('licence_type') ? str(input.licence_type, 120) : current.licence_type,
     attribution: has('attribution') ? str(input.attribution, 500) : current.attribution,
     attribution_required: has('attribution_required') ? Boolean(input.attribution_required) : current.attribution_required,
+    overlay_key: has('overlay_key') ? await layerKey(id, 'overlay', input.overlay_key) : current.overlay_key,
+    light_map_key: has('light_map_key') ? await layerKey(id, 'lightmap', input.light_map_key) : current.light_map_key,
   };
   const updated = (await one<MockupRow>(
-    `UPDATE mockups SET title=$2, tags=$3, scene=$4, device_type=$5, tone=$6, licence_source=$7, licence_type=$8, attribution=$9, attribution_required=$10
-      WHERE id = $1 RETURNING *`,
-    [id, next.title, next.tags, next.scene, next.device_type, next.tone, next.licence_source, next.licence_type, next.attribution, next.attribution_required],
+    `UPDATE mockups SET title=$2, tags=$3, scene=$4, device_type=$5, tone=$6, licence_source=$7, licence_type=$8, attribution=$9, attribution_required=$10,
+       overlay_key=$11, light_map_key=$12 WHERE id = $1 RETURNING *`,
+    [id, next.title, next.tags, next.scene, next.device_type, next.tone, next.licence_source, next.licence_type, next.attribution, next.attribution_required, next.overlay_key, next.light_map_key],
   ))!;
   // A published mockup must stay publishable.
   if (updated.status === 'published') {
@@ -108,6 +110,14 @@ export async function updateMockupMeta(id: string, input: Record<string, any>): 
     }
   }
   return updated;
+}
+
+/** CP-5 / CP-6: an overlay or light map uploaded for this mockup (or null to remove it). */
+async function layerKey(mockupId: string, kind: 'overlay' | 'lightmap', key: unknown): Promise<string | null> {
+  if (key == null || key === '') return null;
+  const ok = new RegExp(`^mockups/${mockupId}/${kind}-\\d+\\.(png|jpg)$`).test(String(key));
+  if (!ok || !(await getStorage().exists(String(key)))) throw new MockupError(`Upload the ${kind === 'overlay' ? 'overlay' : 'light map'} image again`, 'bad_layer');
+  return String(key);
 }
 
 /** Masks are either a shared library mask (masks/...) or one uploaded for this mockup, and must exist. */

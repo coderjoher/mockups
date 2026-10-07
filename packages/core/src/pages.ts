@@ -32,12 +32,16 @@ export function titleFromPath(url: string): string {
   return words ? words[0].toUpperCase() + words.slice(1) : 'Home';
 }
 
-export async function listPages(projectId: string, q?: string): Promise<PageRow[]> {
+export async function listPages(projectId: string, q?: string, lang?: string): Promise<PageRow[]> {
   const params: unknown[] = [projectId];
   let filter = '';
   if (q?.trim()) {
     params.push(`%${q.trim().toLowerCase()}%`);
-    filter = 'AND (lower(title) LIKE $2 OR lower(url) LIKE $2)';
+    filter = `AND (lower(title) LIKE $${params.length} OR lower(url) LIKE $${params.length})`;
+  }
+  if (lang) {
+    params.push(lang);
+    filter += ` AND lang = $${params.length}`;
   }
   return query<PageRow>(`SELECT * FROM pages WHERE project_id = $1 ${filter} ORDER BY "order", url`, params);
 }

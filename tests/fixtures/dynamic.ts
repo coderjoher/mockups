@@ -95,6 +95,32 @@ export const dynamicRoutes: Record<string, Route> = {
     if (url.pathname === '/robots.txt') return html(res, '', 404);
     return false;
   },
+  // Phase 8 fixtures.
+  shop(req, res, url) {
+    const o = origin(req);
+    const products = Array.from({ length: 12 }, (_, i) => `/product/item-${i}`);
+    const posts = ['/blog/hello', '/blog/news', '/blog/launch'];
+    if (url.pathname === '/sitemap.xml') return xml(res, urlset(o, ['/', '/en/', '/ar/', '/about', ...products, ...posts]));
+    if (url.pathname === '/robots.txt') return html(res, '', 404);
+    const alternates = `<link rel="alternate" hreflang="en" href="${o}/en/"><link rel="alternate" hreflang="ar" href="${o}/ar/"><link rel="alternate" hreflang="x-default" href="${o}/">`;
+    if (url.pathname === '/') return html(res, `<!doctype html><html lang="en"><head><title>Shop</title>${alternates}</head><body>Shop</body></html>`);
+    if (url.pathname === '/ar/') return html(res, `<!doctype html><html lang="ar" dir="rtl"><head><title>المتجر</title></head><body>متجر</body></html>`);
+    return html(res, page(`Shop ${url.pathname}`));
+  },
+  sticky(_req, res) {
+    return html(res, `<!doctype html><html><head><title>Sticky</title><style>
+      body{margin:0;background:#fff} header{position:fixed;top:0;left:0;right:0;height:80px;background:#ff6600;z-index:9}
+      main{padding-top:80px} section{height:900px;border-bottom:4px solid #ddd}
+      .cookie-bar{position:fixed;bottom:0;left:0;right:0;height:50px;background:#00aa00}
+    </style></head><body><header></header><main><section></section><section></section><section></section><section></section></main><div class="cookie-bar"></div></body></html>`);
+  },
+  darkmode(_req, res) {
+    return html(res, `<!doctype html><html><head><title>Dark</title><style>
+      body{margin:0;background:#ffffff;height:2000px} @media (prefers-color-scheme: dark){body{background:#111111}}
+      .promo{height:200px;background:#ff00ff} #late{height:200px;background:#00ffff;display:none}
+    </style></head><body><div class="promo"></div><div id="late"></div>
+    <script>setTimeout(() => { document.getElementById('late').style.display = 'block'; }, 5000);</script></body></html>`);
+  },
   // Phase 3: capture fixtures.
   tall(_req, res) {
     return html(res, page('Tall', '<div style="height:30000px;background:linear-gradient(#fff,#000)"></div>'));
