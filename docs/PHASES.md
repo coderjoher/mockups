@@ -70,6 +70,8 @@ All capture and discovery tests run against **local fixture sites** (served from
 
 **Gate 0:** `docker compose up` brings the whole stack up from a clean clone; all of the above pass in CI.
 
+- [x] Gate 0 passed (`scripts/phase-gate.sh 0`), coverage 92 % lines. `docker compose config` validated; full image build not run in the dev container (Docker Hub rate limit).
+
 ---
 
 ## Phase 1: URL intake and safety (SSRF, rate limits)

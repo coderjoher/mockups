@@ -1,0 +1,32 @@
+{
+  "name": "mockups",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "workers/capture"
+  ],
+  "scripts": {
+    "test": "npm run test:node && npm run test:py",
+    "test:node": "vitest run",
+    "test:py": "cd workers/render && python3 -m pytest -q",
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "migrate": "tsx packages/core/src/migrate-cli.ts up",
+    "seed": "tsx packages/core/src/seed-cli.ts",
+    "dev:api": "tsx watch apps/api/src/server.ts",
+    "dev:worker": "tsx workers/capture/src/main.ts",
+    "dev:render": "cd workers/render && python3 -m mockup_render.worker",
+    "dev:web": "npm --workspace apps/web run dev"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "@types/node": "^26.6.4",
+    "@vitest/coverage-v8": "^5.0.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vitest": "^5.0.3",
+    "yaml": "^2.9.1"
+  }
+}

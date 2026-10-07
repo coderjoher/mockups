@@ -1,0 +1,5 @@
+{
+  "app": { "name": "Mockup Generator", "tagline": "Paste a link, get device mockups of every page." },
+  "nav": { "projects": "Projects", "library": "Mockup library", "admin": "Admin", "signOut": "Sign out", "language": "العربية" },
+  "login": { "title": "Sign in", "email": "Email", "password": "Password", "submit": "Sign in", "error": "Wrong email or password" }
+}

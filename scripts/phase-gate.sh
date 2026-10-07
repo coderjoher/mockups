@@ -37,13 +37,8 @@ echo "Every requirement in phases 0..$phase has a test."
 if [[ -n "${PHASE_GATE_TEST_CMD:-}" ]]; then
   bash -c "$PHASE_GATE_TEST_CMD"
 else
-  ran=0
-  if [[ -f package.json ]]; then npm test; ran=1; fi
-  if [[ -d workers/render ]]; then (cd workers/render && python -m pytest); ran=1; fi
-  if (( ran == 0 )); then
-    echo "Gate $phase FAILED: no test suite found to run."
-    exit 1
-  fi
+  npm test          # Node unit + integration, then Python (pytest)
+  npm run test:e2e  # Playwright end-to-end against the full stack
 fi
 
 echo "Gate $phase PASSED. Tick the exit criteria in docs/PHASES.md before starting phase $((phase + 1))."

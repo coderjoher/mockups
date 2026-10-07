@@ -1,0 +1,86 @@
+# v1 deployment: one VPS, every service a container; add capture/render replicas to scale.
+x-app-env: &app-env
+  DATABASE_URL: postgres://mockups:mockups@postgres:5432/mockups
+  REDIS_URL: redis://redis:6379
+  STORAGE_DRIVER: s3
+  S3_ENDPOINT: http://minio:9000
+  S3_BUCKET: mockups
+  S3_REGION: us-east-1
+  S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-mockups}
+  S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-mockups-secret}
+  APP_SECRET: ${APP_SECRET:-change-me}
+  PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:3000/api}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mockups
+      POSTGRES_PASSWORD: mockups
+      POSTGRES_DB: mockups
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "mockups"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  minio:
+    image: quay.io/minio/minio
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY_ID:-mockups}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_ACCESS_KEY:-mockups-secret}
+    volumes: [objects:/data]
+
+  minio-bucket:
+    image: quay.io/minio/mc
+    depends_on: [minio]
+    entrypoint: >
+      sh -c "until mc alias set local http://minio:9000 $${S3_ACCESS_KEY_ID:-mockups} $${S3_SECRET_ACCESS_KEY:-mockups-secret}; do sleep 1; done;
+             mc mb --ignore-existing local/mockups"
+
+  migrate:
+    build: { context: ., dockerfile: infra/node.Dockerfile, target: api }
+    command: ["sh", "-c", "npx tsx packages/core/src/migrate-cli.ts up && npx tsx packages/core/src/seed-cli.ts"]
+    environment: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+
+  api:
+    build: { context: ., dockerfile: infra/node.Dockerfile, target: api }
+    environment: *app-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    ports: ["4000:4000"]
+
+  capture-worker:
+    build: { context: ., dockerfile: infra/node.Dockerfile, target: capture }
+    environment: *app-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+    shm_size: 1gb
+
+  render-worker:
+    build: { context: workers/render }
+    environment: *app-env
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      redis: { condition: service_healthy }
+
+  web:
+    build: { context: ., dockerfile: infra/node.Dockerfile, target: web, args: { API_URL: "http://api:4000" } }
+    depends_on: [api]
+    ports: ["3000:3000"]
+
+volumes:
+  pgdata:
+  objects:

@@ -1,0 +1,23 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #f7f7f5;
+  --fg: #1c1c1a;
+  --muted: #6b6b66;
+  --card: #ffffff;
+  --line: #e4e3df;
+  --accent: #2563eb;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: system-ui, 'Noto Sans Arabic', 'IBM Plex Sans Arabic', sans-serif;
+}
+
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+.btn { display: inline-flex; align-items: center; gap: .4rem; border-radius: 8px; padding: .5rem .9rem; font-weight: 600; background: var(--accent); color: #fff; }
+.btn:disabled { opacity: .5; }
+.btn-ghost { display: inline-flex; align-items: center; gap: .4rem; border-radius: 8px; padding: .45rem .8rem; border: 1px solid var(--line); background: var(--card); }
+.input { width: 100%; border: 1px solid var(--line); border-radius: 8px; padding: .55rem .75rem; background: #fff; }
+.muted { color: var(--muted); }
