@@ -25,5 +25,22 @@
     "recent": "Your projects",
     "empty": "No projects yet.",
     "pages": "{n} pages selected"
+  },
+  "pages": {
+    "title": "Pages",
+    "discovering": "Finding pages…",
+    "found": "Found {n} pages",
+    "capped": "Discovery stopped early ({reason}); showing what was found so far.",
+    "reason_urls": "200 page limit",
+    "reason_time": "30 second limit",
+    "failed": "Could not list the site's pages. Add pages by hand below.",
+    "search": "Search pages",
+    "add": "Add a page",
+    "addPlaceholder": "/about or https://…",
+    "addButton": "Add",
+    "selected": "{n} / {max} selected",
+    "next": "Capture {n} pages",
+    "rediscover": "Find pages again",
+    "limit": "You can select up to {max} pages per project"
   }
 }

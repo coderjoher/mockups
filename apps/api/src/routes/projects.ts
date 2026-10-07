@@ -4,6 +4,7 @@ import { createProject, getProject, listProjects } from '@mockups/core/projects'
 import { consumePages } from '@mockups/core/ratelimit';
 import { UrlError } from '@mockups/core/url';
 import { HttpError, requireUser } from '../app';
+import { startDiscovery } from './pages';
 
 export async function projectRoutes(app: FastifyInstance) {
   app.post<{ Body: { url?: string } }>('/projects', async (req, reply) => {
@@ -11,7 +12,8 @@ export async function projectRoutes(app: FastifyInstance) {
     await consumePages(user.id, 1);
     try {
       const project = await createProject(user, req.body?.url ?? '');
-      return reply.status(201).send({ project });
+      const discoveryJobId = await startDiscovery(project.id, user.id);
+      return reply.status(201).send({ project, discoveryJobId });
     } catch (err) {
       if (err instanceof UrlError) throw new HttpError(422, err.message, err.code);
       throw err;

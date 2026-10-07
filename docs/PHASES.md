@@ -119,6 +119,8 @@ every later feature inherits the guard.
 
 **Gate 2:** all discovery fixtures produce the expected lists; tests green.
 
+- [x] Gate 2 passed (`scripts/phase-gate.sh 2`).
+
 ---
 
 ## Phase 3: Capture engine
