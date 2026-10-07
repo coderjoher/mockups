@@ -5,6 +5,7 @@ import { useT } from '@/lib/I18nProvider';
 import { MockupGrid } from '@/components/MockupGrid';
 import type { Capture } from './Gallery';
 import { ExportPanel } from './ExportPanel';
+import { DEFAULT_STYLE, LayoutStyle, type Style } from './LayoutStyle';
 
 type Assignments = Record<string, { captureId: string; scrollOffset: number }>;
 
@@ -17,7 +18,7 @@ async function waitForRender(id: string, signal: { cancelled: boolean }): Promis
 }
 
 /** Pick a mockup photo, see a live preview, assign pages to screens (CR-2) and render full size. */
-export function MockupStep({ projectId, onBack }: { projectId: string; onBack: () => void }) {
+export function MockupStep({ projectId, onBack, brand = [] }: { projectId: string; onBack: () => void; brand?: string[] }) {
   const t = useT();
   const [mockup, setMockup] = useState<any>(null);
   const [captures, setCaptures] = useState<Capture[]>([]);
@@ -30,7 +31,7 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
   const [setSize, setSetSize] = useState(0);
   const [note, setNote] = useState('');
   const [layoutRender, setLayoutRender] = useState<any>(null);
-  const [style] = useState<Record<string, unknown>>({});
+  const [style, setStyle] = useState<Style>(DEFAULT_STYLE);
   const home = useMemo(() => {
     const first = captures.find((c) => c.mode === 'fold');
     const out: Record<string, Capture> = {};
@@ -118,7 +119,8 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
         ? captures.filter((c) => c.device === 'desktop' && c.mode === 'fold').map((c) => c.id)
         : captures.filter((c) => c.mode === 'full').slice(0, 1).map((c) => c.id);
       if (!ids.length) throw new Error(kind === 'tall' ? t('mockup.tallNeedsFull') : t('mockup.rendering'));
-      const { render } = await api(`/projects/${projectId}/layouts`, { method: 'POST', json: { layout: kind, captureIds: ids, ...style } });
+      const body = { layout: kind, captureIds: ids, bg: style.bg, padding: style.padding, shadow: style.shadow, headline: style.headline || undefined, logoKey: style.logoKey };
+      const { render } = await api(`/projects/${projectId}/layouts`, { method: 'POST', json: body });
       const done = await waitForRender(render.id, { cancelled: false });
       if (done.status === 'failed') setError(done.error ?? 'Render failed');
       setLayoutRender(done);
@@ -206,6 +208,7 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
           <MockupGrid onPick={pick} homeCaptures={home} />
           <div className="card space-y-2 p-3" data-testid="layouts">
             <h3 className="font-semibold">{t('mockup.layouts')}</h3>
+            <LayoutStyle projectId={projectId} brand={brand} value={style} onChange={setStyle} />
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost" disabled={busy} onClick={() => layout('grid')} data-testid="layout-grid">{t('mockup.grid')}</button>
               <button className="btn-ghost" disabled={busy} onClick={() => layout('tall')} data-testid="layout-tall">{t('mockup.tall')}</button>
@@ -214,7 +217,7 @@ export function MockupStep({ projectId, onBack }: { projectId: string; onBack: (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={layoutRender.urls.png} alt="" className="max-h-96 w-auto rounded border border-[var(--line)]" data-testid="layout-result" />
             )}
-            <ExportPanel projectId={projectId} setSize={setSize} />
+            <ExportPanel projectId={projectId} setSize={setSize} bg={style.bg} />
           </div>
         </>
       )}

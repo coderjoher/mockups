@@ -55,7 +55,7 @@ export async function renderRoutes(app: FastifyInstance) {
   });
 
   // CR-5: photo-free layouts.
-  app.post<{ Params: { id: string }; Body: { layout?: string; captureIds?: string[]; bg?: unknown; padding?: unknown; shadow?: unknown; preview?: boolean } }>('/projects/:id/layouts', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { layout?: string; captureIds?: string[]; bg?: unknown; padding?: unknown; shadow?: unknown; preview?: boolean; headline?: string; logoKey?: string } }>('/projects/:id/layouts', async (req, reply) => {
     const project = await load(req);
     const { layout = '', captureIds = [], ...style } = req.body ?? {};
     try {
@@ -73,10 +73,10 @@ export async function renderRoutes(app: FastifyInstance) {
   });
 
   // EX-3: ZIP of the whole set (or the given renders) in the chosen formats.
-  app.post<{ Params: { id: string }; Body: { formats?: string[]; renderIds?: string[] } }>('/projects/:id/exports', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { formats?: string[]; renderIds?: string[]; presets?: string[]; bg?: unknown } }>('/projects/:id/exports', async (req, reply) => {
     const project = await load(req);
     try {
-      return reply.status(202).send(await createExport(project.id, req.body?.formats ?? ['png'], req.body?.renderIds?.filter(isId)));
+      return reply.status(202).send(await createExport(project.id, req.body?.formats ?? ['png'], req.body?.renderIds?.filter(isId), req.body?.presets, req.body?.bg));
     } catch (err) {
       if (err instanceof RenderError) throw new HttpError(422, err.message, err.code);
       throw err;

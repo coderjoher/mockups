@@ -1,7 +1,7 @@
 import { one, query } from './db';
 import { exportName, siteName, uniqueNames } from './filenames';
 import { enqueue } from './queue';
-import { createRender, RenderError } from './renders';
+import { createLayoutRender, createRender, RenderError } from './renders';
 import { getStorage } from './storage';
 
 export const FORMATS = ['png', 'webp', 'jpg'] as const;
@@ -47,7 +47,10 @@ export async function downloadName(renderId: string, ext: string): Promise<strin
  * EX-3: ZIP of the whole set. Every final render in the project (latest per mockup + assignment) is rendered again
  * in the requested formats (renders are deterministic, CR-7), then the export job zips them.
  */
-export async function createExport(projectId: string, formats: string[], renderIds?: string[]): Promise<{ jobId: string; renderIds: string[] }> {
+export async function createExport(projectId: string, formats: string[], renderIds?: string[], presetsInput?: unknown, bg?: unknown): Promise<{ jobId: string; renderIds: string[] }> {
+  const { validatePresets, validateBackground } = await import('./renders');
+  const presets = presetsInput === undefined ? [] : validatePresets(presetsInput);
+  const background = bg === undefined || bg === null ? undefined : validateBackground(bg);
   const fmts = FORMATS.filter((f) => formats.includes(f));
   if (!fmts.length) throw new RenderError('Choose at least one format (PNG, WebP or JPG)', 'no_formats');
   const sources = renderIds?.length
@@ -61,10 +64,20 @@ export async function createExport(projectId: string, formats: string[], renderI
   if (!sources.length) throw new RenderError('Render at least one mockup at full size first', 'nothing_to_export');
   const ids: string[] = [];
   for (const s of sources) {
-    const { render } = await createRender(projectId, s.mockup_id, s.assignments, { formats: [...fmts], options: { batch: s.options?.batch } });
+    const extra = { presets, ...(background ? { bg: background } : {}) };
+    if (s.layout && s.layout !== 'mockup') {
+      const { render } = await createLayoutRender(projectId, s.layout, (s.assignments?.pages ?? []).map((p: any) => p.captureId), {
+        ...Object.fromEntries(['bg', 'padding', 'shadow', 'headline', 'logoKey'].filter((k) => s.options?.[k] !== undefined).map((k) => [k, s.options[k]])),
+        formats: [...fmts],
+        ...extra,
+      });
+      ids.push(render.id);
+      continue;
+    }
+    const { render } = await createRender(projectId, s.mockup_id, s.assignments, { formats: [...fmts], options: { batch: s.options?.batch, ...extra } });
     ids.push(render.id);
   }
-  const jobId = await enqueue('export', { projectId, renderIds: ids, formats: fmts }, projectId);
+  const jobId = await enqueue('export', { projectId, renderIds: ids, formats: fmts, presets }, projectId);
   return { jobId, renderIds: ids };
 }
 

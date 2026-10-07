@@ -128,7 +128,7 @@ export async function createLayoutRender(
   projectId: string,
   layout: string,
   captureIds: string[],
-  style: { bg?: unknown; padding?: unknown; shadow?: unknown; preview?: boolean; formats?: string[] } = {},
+  style: { bg?: unknown; padding?: unknown; shadow?: unknown; preview?: boolean; formats?: string[]; headline?: unknown; logoKey?: unknown; presets?: unknown } = {},
 ) {
   if (!LAYOUTS.includes(layout as any)) throw new RenderError('layout must be grid or tall');
   const caps = await query("SELECT c.id FROM captures c JOIN pages p ON p.id = c.page_id WHERE p.project_id = $1 AND c.status = 'done' AND c.id = ANY($2::uuid[])", [projectId, captureIds]);
@@ -139,12 +139,24 @@ export async function createLayoutRender(
   if (style.bg !== undefined) options.bg = validateBackground(style.bg);
   if (style.padding !== undefined) options.padding = clampInt(style.padding, 0, 400, 'padding');
   if (style.shadow !== undefined) options.shadow = clampNum(style.shadow, 0, 1, 'shadow');
+  if (style.headline) options.headline = String(style.headline).slice(0, 120);
+  if (style.logoKey) {
+    if (!new RegExp(`^projects/${projectId}/logo-\\d+\\.(png|jpg|webp)$`).test(String(style.logoKey))) throw new RenderError('Upload the logo again');
+    options.logoKey = String(style.logoKey);
+  }
+  if (style.presets !== undefined) options.presets = validatePresets(style.presets);
   const render = (await one(
     'INSERT INTO renders(project_id, mockup_id, layout, assignments, options) VALUES ($1,NULL,$2,$3,$4) RETURNING *',
     [projectId, layout, JSON.stringify({ pages: ordered.slice(0, 12).map((captureId) => ({ captureId })) }), JSON.stringify(options)],
   ))!;
   const jobId = await enqueue('render', { kind: 'render', renderId: render.id }, projectId);
   return { render, jobId };
+}
+
+export const PRESETS = ['ig_post', 'ig_story', 'linkedin', 'behance', 'slide', '4k'] as const;
+export function validatePresets(input: unknown): string[] {
+  if (!Array.isArray(input) || input.some((p) => !PRESETS.includes(p))) throw new RenderError(`Presets must be among ${PRESETS.join(', ')}`);
+  return [...new Set(input as string[])];
 }
 
 const HEX = /^#[0-9a-f]{6}$/i;

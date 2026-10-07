@@ -21,6 +21,8 @@ const urlset = (base: string, paths: string[]) =>
 const page = (title: string, body = '') => `<!doctype html><html lang="en"><head><title>${title}</title><link rel="icon" href="/favicon.png"></head><body>${body}</body></html>`;
 const origin = (req: IncomingMessage) => `http://${req.headers.host}`;
 export const cookieLog: string[] = [];
+/** Page loads of the brand site, to see whether the capture cache was used (CE-12). */
+export const brandStats = { pageLoads: 0 };
 /** Concurrent page loads seen by the slowpages site (CE-10). */
 export const slowStats = { inflight: 0, max: 0 };
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
@@ -120,6 +122,20 @@ export const dynamicRoutes: Record<string, Route> = {
       .promo{height:200px;background:#ff00ff} #late{height:200px;background:#00ffff;display:none}
     </style></head><body><div class="promo"></div><div id="late"></div>
     <script>setTimeout(() => { document.getElementById('late').style.display = 'block'; }, 5000);</script></body></html>`);
+  },
+  // Phase 9: a site with known brand colours (CX-3) and a request counter for the capture cache (CE-12).
+  brand(_req, res, url) {
+    if (url.pathname === '/logo.svg') {
+      res.writeHead(200, { 'content-type': 'image/svg+xml' }).end('<svg xmlns="http://www.w3.org/2000/svg" width="160" height="60"><rect width="160" height="60" fill="#f59e0b"/></svg>');
+      return true;
+    }
+    brandStats.pageLoads++;
+    return html(res, `<!doctype html><html><head><title>Brand Co</title><style>
+      body{margin:0;background:#ffffff;color:#222;font-family:sans-serif} header{background:#0f766e;height:90px;display:flex;align-items:center;padding:0 24px}
+      .hero{height:420px;background:#f8fafc;padding:40px} .btn{display:inline-block;background:#e11d48;color:#fff;padding:18px 36px;border-radius:8px}
+      a{color:#e11d48}
+    </style></head><body><header><img id="logo" class="site-logo" src="/logo.svg" alt="Brand Co logo" width="160" height="60"></header>
+    <section class="hero"><h1>Brand Co</h1><a class="btn" href="/contact">Get started</a> <a href="/about">About</a></section></body></html>`);
   },
   // Phase 3: capture fixtures.
   tall(_req, res) {

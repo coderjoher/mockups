@@ -11,6 +11,7 @@ import { pageRoutes } from './routes/pages';
 import { captureRoutes } from './routes/captures';
 import { mockupRoutes } from './routes/mockups';
 import { renderRoutes } from './routes/renders';
+import { shareRoutes } from './routes/share';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -62,5 +63,6 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(captureRoutes);
   await app.register(mockupRoutes);
   await app.register(renderRoutes);
+  await app.register(shareRoutes);
   return app;
 }

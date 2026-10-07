@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { one } from '@mockups/core/db';
 import { contentTypes, inspectImage } from '@mockups/core/images';
 import {
+  favouriteIds, recentMockups, setFavourite,
   createMockup, DEVICE_TYPES, getScreens, listMockups, MockupError, ORIENTATIONS, SCENES, setScreens, setStatus, TONES, updateMockupMeta, withUrls,
   type MockupRow,
 } from '@mockups/core/mockups';
@@ -39,10 +40,33 @@ async function getScreensWithUrls(id: string) {
 export async function mockupRoutes(app: FastifyInstance) {
   // ML-1: the user-side library (published only, CP-8).
   app.get<{ Querystring: Record<string, string> }>('/mockups', async (req) => {
-    await requireUser(req);
-    const { device, scene, tone, orientation, q } = req.query;
-    const rows = await listMockups({ device, scene, tone, orientation, q });
-    return { mockups: await Promise.all(rows.map(full)), filters: { device: DEVICE_TYPES, scene: SCENES, tone: TONES, orientation: ORIENTATIONS } };
+    const user = await requireUser(req);
+    const { device, scene, tone, orientation, q, favourites } = req.query;
+    const rows = await listMockups({ device, scene, tone, orientation, q, favouritesOf: favourites ? user.id : undefined });
+    const favs = await favouriteIds(user.id);
+    const mockups = await Promise.all(rows.map(async (m) => ({ ...(await full(m)), favourite: favs.has(m.id) })));
+    return { mockups, filters: { device: DEVICE_TYPES, scene: SCENES, tone: TONES, orientation: ORIENTATIONS } };
+  });
+
+  // ML-3: recently used in this workspace, and per-user favourites.
+  app.get('/mockups/recent', async (req) => {
+    const user = await requireUser(req);
+    const favs = await favouriteIds(user.id);
+    return { mockups: await Promise.all((await recentMockups(user.workspace_id)).map(async (m) => ({ ...(await full(m)), favourite: favs.has(m.id) }))) };
+  });
+
+  app.put<{ Params: { id: string } }>('/mockups/:id/favourite', async (req) => {
+    const user = await requireUser(req);
+    const m = isId(req.params.id) ? await one("SELECT id FROM mockups WHERE id = $1 AND status = 'published'", [req.params.id]) : undefined;
+    if (!m) throw new HttpError(404, 'Mockup not found');
+    await setFavourite(user.id, m.id, true);
+    return { favourite: true };
+  });
+
+  app.delete<{ Params: { id: string } }>('/mockups/:id/favourite', async (req) => {
+    const user = await requireUser(req);
+    if (isId(req.params.id)) await setFavourite(user.id, req.params.id, false);
+    return { favourite: false };
   });
 
   app.get<{ Params: { id: string } }>('/mockups/:id', async (req) => {

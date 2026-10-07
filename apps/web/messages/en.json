@@ -114,7 +114,10 @@
     "orientation_portrait": "Portrait",
     "orientation_square": "Square",
     "search": "Search mockups",
-    "livePreview": "Preview with your home page"
+    "livePreview": "Preview with your home page",
+    "favourites": "Favourites only",
+    "favourite": "Favourite",
+    "recent": "Recently used"
   },
   "admin": {
     "title": "Mockup photos",
@@ -156,6 +159,32 @@
   "export": {
     "title": "Download the set ({n} mockups)",
     "zip": "Download ZIP",
-    "preparing": "Preparing ZIP…"
+    "preparing": "Preparing ZIP…",
+    "preset_ig_post": "Instagram post",
+    "preset_ig_story": "Instagram story",
+    "preset_linkedin": "LinkedIn",
+    "preset_behance": "Behance",
+    "preset_slide": "Slide",
+    "preset_4k": "4K"
+  },
+  "style": {
+    "background": "Background",
+    "solid": "Solid colour",
+    "gradient": "Gradient",
+    "colour": "Colour",
+    "from": "From",
+    "to": "To",
+    "brand": "Colours from the site",
+    "brandGradient": "Brand gradient",
+    "padding": "Padding",
+    "shadow": "Shadow",
+    "headline": "Headline (optional)",
+    "logo": "Client logo (optional)"
+  },
+  "share": {
+    "title": "Share a read-only link",
+    "create": "Create link",
+    "copy": "Copy",
+    "revoke": "Turn off"
   }
 }

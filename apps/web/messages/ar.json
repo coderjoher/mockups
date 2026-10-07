@@ -114,7 +114,10 @@
     "orientation_portrait": "عمودي",
     "orientation_square": "مربع",
     "search": "ابحث في النماذج",
-    "livePreview": "معاينة مع صفحتك الرئيسية"
+    "livePreview": "معاينة مع صفحتك الرئيسية",
+    "favourites": "المفضلة فقط",
+    "favourite": "مفضّل",
+    "recent": "المستخدمة مؤخراً"
   },
   "admin": {
     "title": "صور النماذج",
@@ -156,6 +159,32 @@
   "export": {
     "title": "تنزيل المجموعة ({n} نماذج)",
     "zip": "تنزيل ملف ZIP",
-    "preparing": "جارٍ تجهيز الملف…"
+    "preparing": "جارٍ تجهيز الملف…",
+    "preset_ig_post": "منشور إنستغرام",
+    "preset_ig_story": "قصة إنستغرام",
+    "preset_linkedin": "لينكدإن",
+    "preset_behance": "بيهانس",
+    "preset_slide": "شريحة عرض",
+    "preset_4k": "4K"
+  },
+  "style": {
+    "background": "الخلفية",
+    "solid": "لون واحد",
+    "gradient": "تدرّج",
+    "colour": "اللون",
+    "from": "من",
+    "to": "إلى",
+    "brand": "ألوان من الموقع",
+    "brandGradient": "تدرّج الهوية",
+    "padding": "الهوامش",
+    "shadow": "الظل",
+    "headline": "عنوان (اختياري)",
+    "logo": "شعار العميل (اختياري)"
+  },
+  "share": {
+    "title": "مشاركة رابط للعرض فقط",
+    "create": "إنشاء رابط",
+    "copy": "نسخ",
+    "revoke": "إيقاف"
   }
 }

@@ -312,6 +312,9 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 
 **Gate 9 (= PRD Gate 2):** tests green; decision recorded: internal tool or product.
 
+- [x] Engineering gate passed (`scripts/phase-gate.sh 9`).
+- [ ] Business decision (internal tool or product) not yet recorded; Phase 10 was built on request.
+
 ---
 
 ## Phase 10: Scale (only if Gate 2 says "product")

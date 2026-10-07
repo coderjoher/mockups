@@ -10,6 +10,7 @@ from . import config
 from .storage import get_storage
 from .registry import handler
 from .layouts import grid_collage, tall_frame
+from .presets import add_headline, fit_preset
 from .render import Assignment, Scene, Screen, compose
 
 THUMB_LONG_SIDE = 800
@@ -129,10 +130,18 @@ def render_job(data):
                 storage.put(key, encode(out, "jpg", 85), "image/jpeg")
                 outputs["preview"] = key
             else:
-                for fmt in opts.get("formats") or ["png"]:
+                formats = opts.get("formats") or ["png"]
+                for fmt in formats:
                     key = f"renders/{r['project_id']}/{render_id}/native.{fmt}"
                     storage.put(key, encode(out, fmt, 90), CONTENT_TYPES[fmt])
                     outputs[fmt] = key
+                # EX-2: social and slide sizes on the chosen background (CX-2).
+                for preset in opts.get("presets") or []:
+                    sized = fit_preset(out, preset, opts.get("bg"))
+                    for fmt in formats:
+                        key = f"renders/{r['project_id']}/{render_id}/{preset}.{fmt}"
+                        storage.put(key, encode(sized, fmt, 90), CONTENT_TYPES[fmt])
+                        outputs[f"{preset}.{fmt}"] = key
             c.execute(
                 "UPDATE renders SET status = 'done', outputs = %s WHERE id = %s",
                 (json.dumps(outputs), render_id),
@@ -158,6 +167,9 @@ def render_layout(c, r, opts) -> np.ndarray:
     if not images:
         raise ValueError("No captured pages to lay out")
     style = {k: opts[k] for k in ("padding", "shadow", "bg") if k in opts}
-    if r["layout"] == "tall":
-        return tall_frame(images[0], **style)
-    return grid_collage(images, **style)
+    out = tall_frame(images[0], **style) if r["layout"] == "tall" else grid_collage(images, **style)
+    # CX-4: optional headline and client logo.
+    logo = decode(storage.get(opts["logoKey"]), cv2.IMREAD_UNCHANGED) if opts.get("logoKey") else None
+    if opts.get("headline") or logo is not None:
+        out = add_headline(out, opts.get("headline"), logo)
+    return out

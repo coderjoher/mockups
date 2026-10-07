@@ -24,7 +24,7 @@ async function zip(entries: { name: string; body: Buffer }[]): Promise<Buffer> {
 }
 
 /** EX-3 / EX-6: waits for the set's renders, then zips them with an attribution file when a licence needs one. */
-export async function exportJob(data: { jobId: string; projectId: string; renderIds: string[]; formats: string[] }) {
+export async function exportJob(data: { jobId: string; projectId: string; renderIds: string[]; formats: string[]; presets?: string[] }) {
   const renders = await waitForRenders(data.renderIds);
   const failed = renders.filter((r) => r.status === 'failed');
   if (failed.length === renders.length) throw new Error(`Rendering failed: ${failed[0].error ?? 'unknown error'}`);
@@ -34,6 +34,11 @@ export async function exportJob(data: { jobId: string; projectId: string; render
     const parts = await renderNameParts(r.id);
     for (const fmt of data.formats) {
       if (r.outputs?.[fmt]) items.push({ name: exportName({ ...parts, ext: fmt }), key: r.outputs[fmt] });
+      // EX-2: sized copies, named with their preset.
+      for (const preset of data.presets ?? []) {
+        const key = r.outputs?.[`${preset}.${fmt}`];
+        if (key) items.push({ name: exportName({ ...parts, mockup: `${parts.mockup}-${preset.replace('_', '-')}`, ext: fmt }), key });
+      }
     }
   }
   const names = uniqueNames(items.map((i) => i.name));

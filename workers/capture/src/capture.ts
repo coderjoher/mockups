@@ -6,6 +6,8 @@ import blocklist from './cleanup/blocklist.json' with { type: 'json' };
 import { FIX_STICKY, FREEZE_CSS, FREEZE_INIT, HIDE_GENERIC_OVERLAYS, hideCss, scrollScript, settleScript } from './cleanup/inject';
 import { getBrowser } from './browser';
 import { fitExact } from './fit';
+import { BRAND_SCRIPT, logoColours, pickBrandColours } from '@mockups/core/brand';
+import { PNG } from 'pngjs';
 
 export const CAPTURE_TIMEOUT_MS = 45_000; // CE-9
 export const captureTimeoutMs = () => Number(process.env.CAPTURE_TIMEOUT_MS ?? CAPTURE_TIMEOUT_MS);
@@ -22,6 +24,8 @@ export interface CaptureOptions {
   hideSelectors?: string[];
   delayMs?: number;
   fixStickyHeaders?: boolean;
+  /** CX-3: also read the site's brand colours (used on the Home page). */
+  brandColours?: boolean;
 }
 
 export interface CaptureResult {
@@ -31,6 +35,7 @@ export interface CaptureResult {
   title: string;
   finalUrl: string;
   hiddenOverlays: number;
+  brandColours?: string[];
 }
 
 export class CaptureError extends Error {
@@ -131,6 +136,7 @@ export async function capturePage(url: string, device: Device, viewport: Viewpor
     await settle(page, deadline);
     if (opts.delayMs) await page.waitForTimeout(Math.min(opts.delayMs, 10_000));
     const hiddenOverlays = (await page.evaluate(HIDE_GENERIC_OVERLAYS)) as number;
+    const brandColours = opts.brandColours ? await readBrandColours(page) : undefined;
     if (opts.mode === 'full' && opts.fixStickyHeaders !== false) await fixSticky(page);
     await page.evaluate('window.__mockupFreeze && window.__mockupFreeze()');
     let height = viewport.height;
@@ -154,6 +160,7 @@ export async function capturePage(url: string, device: Device, viewport: Viewpor
       title: await page.title(),
       finalUrl: page.url(),
       hiddenOverlays,
+      brandColours,
     };
   } catch (err) {
     if (killed) throw new CaptureError(`The page took longer than ${Math.round(timeout / 1000)} seconds to load`, 'timeout');
@@ -162,6 +169,17 @@ export async function capturePage(url: string, device: Device, viewport: Viewpor
     clearTimeout(kill);
     await context.close().catch(() => {});
   }
+}
+
+/** CX-3: area-weighted CSS colours plus the dominant colours of the logo. */
+async function readBrandColours(page: Page): Promise<string[]> {
+  const weighted = ((await page.evaluate(BRAND_SCRIPT).catch(() => [])) as [string, number][]) ?? [];
+  const logo = page.locator('header img, header svg, [class*="logo" i] img, img[alt*="logo" i], img[src*="logo" i], [id*="logo" i]').first();
+  if (await logo.isVisible().catch(() => false)) {
+    const shot = await logo.screenshot({ timeout: 3000, animations: 'disabled' }).catch(() => undefined);
+    if (shot) weighted.push(...logoColours(PNG.sync.read(shot).data));
+  }
+  return pickBrandColours(weighted);
 }
 
 /** CE-6 (full-page mode): fixed/sticky headers would repeat down a stitched screenshot; pin them to the top once. */

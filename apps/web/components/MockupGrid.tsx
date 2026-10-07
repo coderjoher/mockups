@@ -66,12 +66,24 @@ export function MockupGrid({ onPick, selectedId, extra, homeCaptures }: { onPick
   const t = useT();
   const [filters, setFilters] = useState<Partial<Record<FilterKey, string>>>({});
   const [q, setQ] = useState('');
+  const [onlyFavs, setOnlyFavs] = useState(false);
   const [mockups, setMockups] = useState<any[] | null>(null);
+  const [recent, setRecent] = useState<any[]>([]);
 
   useEffect(() => {
-    const params = new URLSearchParams(Object.entries({ ...filters, q }).filter(([, v]) => v) as [string, string][]);
+    const params = new URLSearchParams(Object.entries({ ...filters, q, favourites: onlyFavs ? '1' : '' }).filter(([, v]) => v) as [string, string][]);
     api(`/mockups?${params}`).then((r) => setMockups(r.mockups));
-  }, [filters, q]);
+  }, [filters, q, onlyFavs]);
+  useEffect(() => {
+    api('/mockups/recent').then((r) => setRecent(r.mockups), () => {});
+  }, []);
+
+  async function toggleFavourite(m: any) {
+    await api(`/mockups/${m.id}/favourite`, { method: m.favourite ? 'DELETE' : 'PUT' });
+    const flip = (list: any[]) => list.map((x) => (x.id === m.id ? { ...x, favourite: !m.favourite } : x));
+    setMockups((all) => (onlyFavs && m.favourite ? all?.filter((x) => x.id !== m.id) ?? null : flip(all ?? [])));
+    setRecent(flip);
+  }
 
   return (
     <div className="space-y-4">
@@ -85,15 +97,45 @@ export function MockupGrid({ onPick, selectedId, extra, homeCaptures }: { onPick
             </select>
           </label>
         ))}
+        <label className="flex items-end gap-2 text-sm">
+          <input type="checkbox" checked={onlyFavs} onChange={(e) => setOnlyFavs(e.target.checked)} data-testid="only-favourites" />
+          {t('library.favourites')}
+        </label>
         <label className="text-sm">
           {t('library.search')}
           <input className="input mt-1" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
+      {recent.length > 0 && !onlyFavs && (
+        <section>
+          <h3 className="mb-2 text-sm font-semibold">{t('library.recent')}</h3>
+          <ul className="flex gap-3 overflow-x-auto" data-testid="recent-row">
+            {recent.map((m) => (
+              <li key={m.id} className="w-40 shrink-0">
+                <button type="button" onClick={() => onPick?.(m)} className="card block w-full overflow-hidden text-start">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={m.thumb_url} alt={m.title} className="aspect-[4/3] w-full object-cover" />
+                  <div className="truncate p-2 text-xs">{m.title}</div>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {mockups?.length === 0 && <p className="muted">{t('library.empty')}</p>}
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="mockup-grid">
         {mockups?.map((m) => (
-          <li key={m.id} data-testid="mockup-card" data-mockup-id={m.id}>
+          <li key={m.id} data-testid="mockup-card" data-mockup-id={m.id} className="relative">
+            <button
+              type="button"
+              aria-pressed={!!m.favourite}
+              aria-label={t('library.favourite')}
+              onClick={() => toggleFavourite(m)}
+              className={`absolute end-2 top-2 z-10 rounded-full bg-white/90 px-2 py-1 text-sm shadow ${m.favourite ? 'text-red-500' : 'text-gray-400'}`}
+              data-testid="favourite"
+            >
+              {m.favourite ? '♥' : '♡'}
+            </button>
             <button
               type="button"
               onClick={() => onPick?.(m)}

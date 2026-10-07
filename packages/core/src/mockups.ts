@@ -180,6 +180,7 @@ export async function setStatus(id: string, status: 'draft' | 'published'): Prom
 }
 
 export interface LibraryFilter {
+  favouritesOf?: string;
   device?: string;
   scene?: string;
   tone?: string;
@@ -195,6 +196,7 @@ export async function listMockups(filter: LibraryFilter, opts: { includeDrafts?:
     where.push(sql.replace('?', `$${params.length}`));
   };
   if (!opts.includeDrafts) where.push("status = 'published'");
+  if (filter.favouritesOf) add('id IN (SELECT mockup_id FROM favourites WHERE user_id = ?)', filter.favouritesOf);
   if (filter.device) add('device_type = ?', filter.device);
   if (filter.scene) add('scene = ?', filter.scene);
   if (filter.tone) add('tone = ?', filter.tone);
@@ -204,6 +206,27 @@ export async function listMockups(filter: LibraryFilter, opts: { includeDrafts?:
     where.push(`(lower(title) LIKE $${params.length} OR EXISTS (SELECT 1 FROM unnest(tags) t WHERE t LIKE $${params.length}))`);
   }
   return query<MockupRow>(`SELECT * FROM mockups ${where.length ? 'WHERE ' + where.join(' AND ') : ''} ORDER BY created_at DESC, title LIMIT 500`, params);
+}
+
+/** ML-3: favourites per user, and the workspace's recently used mockups. */
+export async function setFavourite(userId: string, mockupId: string, on: boolean) {
+  if (on) await query('INSERT INTO favourites(user_id, mockup_id) VALUES ($1,$2) ON CONFLICT DO NOTHING', [userId, mockupId]);
+  else await query('DELETE FROM favourites WHERE user_id = $1 AND mockup_id = $2', [userId, mockupId]);
+}
+
+export async function favouriteIds(userId: string): Promise<Set<string>> {
+  return new Set((await query('SELECT mockup_id FROM favourites WHERE user_id = $1', [userId])).map((r) => r.mockup_id));
+}
+
+export async function recentMockups(workspaceId: string, limit = 6): Promise<MockupRow[]> {
+  return query<MockupRow>(
+    `SELECT m.* FROM mockups m JOIN (
+        SELECT r.mockup_id, max(r.created_at) AS used FROM renders r JOIN projects p ON p.id = r.project_id
+         WHERE p.workspace_id = $1 AND r.mockup_id IS NOT NULL GROUP BY r.mockup_id
+      ) u ON u.mockup_id = m.id
+      WHERE m.status = 'published' ORDER BY u.used DESC LIMIT $2`,
+    [workspaceId, limit],
+  );
 }
 
 export async function withUrls(m: MockupRow) {
