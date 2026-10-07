@@ -111,13 +111,13 @@ export function MockupStep({ projectId, onBack, brand = [] }: { projectId: strin
   }
 
   // CR-5: photo-free layouts.
-  async function layout(kind: 'grid' | 'tall') {
+  async function layout(kind: 'grid' | 'tall' | 'video') {
     setBusy(true);
     setError('');
     try {
       const ids = kind === 'grid'
         ? captures.filter((c) => c.device === 'desktop' && c.mode === 'fold').map((c) => c.id)
-        : captures.filter((c) => c.mode === 'full').slice(0, 1).map((c) => c.id);
+        : captures.filter((c) => c.mode === 'full').sort((a, b) => (a.device === 'desktop' ? -1 : 0) - (b.device === 'desktop' ? -1 : 0)).slice(0, 1).map((c) => c.id);
       if (!ids.length) throw new Error(kind === 'tall' ? t('mockup.tallNeedsFull') : t('mockup.rendering'));
       const body = { layout: kind, captureIds: ids, bg: style.bg, padding: style.padding, shadow: style.shadow, headline: style.headline || undefined, logoKey: style.logoKey };
       const { render } = await api(`/projects/${projectId}/layouts`, { method: 'POST', json: body });
@@ -212,7 +212,14 @@ export function MockupStep({ projectId, onBack, brand = [] }: { projectId: strin
             <div className="flex flex-wrap gap-2">
               <button className="btn-ghost" disabled={busy} onClick={() => layout('grid')} data-testid="layout-grid">{t('mockup.grid')}</button>
               <button className="btn-ghost" disabled={busy} onClick={() => layout('tall')} data-testid="layout-tall">{t('mockup.tall')}</button>
+              <button className="btn-ghost" disabled={busy} onClick={() => layout('video')} data-testid="layout-video">{t('mockup.video')}</button>
             </div>
+            {layoutRender?.urls?.mp4 && (
+              <>
+                <video src={layoutRender.urls.mp4} controls muted className="max-h-96 w-auto rounded" data-testid="video-result" />
+                <a className="btn-ghost" href={layoutRender.downloads?.mp4 ?? layoutRender.urls.mp4} download data-testid="download-mp4">{t('mockup.downloadVideo')}</a>
+              </>
+            )}
             {layoutRender?.urls?.png && (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={layoutRender.urls.png} alt="" className="max-h-96 w-auto rounded border border-[var(--line)]" data-testid="layout-result" />

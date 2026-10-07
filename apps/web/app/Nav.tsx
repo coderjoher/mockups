@@ -29,6 +29,7 @@ export function Nav({ appName }: { appName: string }) {
         {user && <Link href="/" className="muted">{t('nav.projects')}</Link>}
         {user && <Link href="/library" className="muted">{t('nav.library')}</Link>}
         {user?.role === 'admin' && <Link href="/admin/mockups" className="muted">{t('nav.admin')}</Link>}
+        {user && <Link href="/account" className="muted">{t('nav.account')}</Link>}
         <span className="ms-auto" />
         <button data-testid="lang-switch" className="btn-ghost" onClick={switchLanguage}>{t('nav.language')}</button>
         {user && <button className="btn-ghost" onClick={signOut}>{t('nav.signOut')}</button>}

@@ -2,6 +2,7 @@ import type { FastifyInstance } from 'fastify';
 import { query } from '@mockups/core/db';
 import { createProject, getProject, listProjects } from '@mockups/core/projects';
 import { consumePages } from '@mockups/core/ratelimit';
+import { useQuota } from '@mockups/core/plans';
 import { UrlError } from '@mockups/core/url';
 import { HttpError, requireUser } from '../app';
 import { startDiscovery } from './pages';
@@ -10,6 +11,7 @@ export async function projectRoutes(app: FastifyInstance) {
   app.post<{ Body: { url?: string } }>('/projects', async (req, reply) => {
     const user = await requireUser(req);
     await consumePages(user.id, 1);
+    await useQuota(user.workspace_id, 'projects', 1);
     try {
       const project = await createProject(user, req.body?.url ?? '');
       const discoveryJobId = await startDiscovery(project.id, user.id);

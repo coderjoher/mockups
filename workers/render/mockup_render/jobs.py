@@ -11,6 +11,7 @@ from .storage import get_storage
 from .registry import handler
 from .layouts import grid_collage, tall_frame
 from .presets import add_headline, fit_preset
+from .video import scrolling_video
 from .render import Assignment, Scene, Screen, compose
 
 THUMB_LONG_SIDE = 800
@@ -106,6 +107,17 @@ def render_job(data):
         try:
             opts = r["options"] or {}
             preview = bool(opts.get("preview"))
+            if r["layout"] == "video":
+                # EX-5: scrolling MP4 of one full-page capture.
+                cid = (r["assignments"] or {}).get("pages", [{}])[0].get("captureId")
+                cap = c.execute("SELECT image_key FROM captures WHERE id = %s AND status = 'done'", (cid,)).fetchone()
+                if not cap:
+                    raise ValueError("The capture for the video is missing")
+                video = scrolling_video(decode(storage.get(cap["image_key"]), cv2.IMREAD_COLOR), opts.get("videoPreset") or "slide", opts.get("bg"))
+                key = f"renders/{r['project_id']}/{render_id}/scroll.mp4"
+                storage.put(key, video, "video/mp4")
+                c.execute("UPDATE renders SET status = 'done', outputs = %s WHERE id = %s", (json.dumps({"mp4": key}), render_id))
+                return {"outputs": {"mp4": key}}
             if r["layout"] in ("grid", "tall"):
                 out = render_layout(c, r, opts)
                 if preview and max(out.shape[:2]) > PREVIEW_LONG_SIDE:

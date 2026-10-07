@@ -8,7 +8,8 @@
     "library": "Mockup library",
     "admin": "Admin",
     "signOut": "Sign out",
-    "language": "العربية"
+    "language": "العربية",
+    "account": "Account"
   },
   "login": {
     "title": "Sign in",
@@ -154,7 +155,9 @@
     "layouts": "Layouts without a photo",
     "grid": "Grid of all pages",
     "tall": "Tall full-page frame",
-    "tallNeedsFull": "Capture a page in full-page mode for the tall frame"
+    "tallNeedsFull": "Capture a page in full-page mode for the tall frame",
+    "video": "Scrolling video (MP4)",
+    "downloadVideo": "Download MP4"
   },
   "export": {
     "title": "Download the set ({n} mockups)",
@@ -186,5 +189,23 @@
     "create": "Create link",
     "copy": "Copy",
     "revoke": "Turn off"
+  },
+  "signup": {
+    "title": "Create an account",
+    "name": "Your name",
+    "workspace": "Agency or team name",
+    "submit": "Create account",
+    "link": "No account? Sign up"
+  },
+  "account": {
+    "title": "Account",
+    "plan": "Plan",
+    "usage": "This month: {projects} of {projectsMax} projects, {pages} of {pagesMax} pages",
+    "apiKeys": "API keys",
+    "keyName": "Key name",
+    "createKey": "Create key",
+    "copyNow": "Copy this key now, it will not be shown again:",
+    "revoked": "Turned off",
+    "docs": "API reference (OpenAPI)"
   }
 }

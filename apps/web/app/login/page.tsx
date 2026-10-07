@@ -23,6 +23,7 @@ export default function LoginPage() {
       <label className="block">{t('login.password')}<input name="password" type="password" className="input mt-1" required /></label>
       {error && <p role="alert" className="text-red-600">{error}</p>}
       <button className="btn w-full justify-center" type="submit">{t('login.submit')}</button>
+      <a className="block text-center text-sm text-[var(--accent)] underline" href="/signup">{t('signup.link')}</a>
     </form>
   );
 }

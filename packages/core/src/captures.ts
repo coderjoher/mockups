@@ -1,5 +1,8 @@
 import { getPool, one, query } from './db';
 import { consumePages } from './ratelimit';
+import { useQuota } from './plans';
+import { config } from './config';
+import { redis } from './queue';
 import { enqueue } from './queue';
 import { getStorage } from './storage';
 import { DEVICES, type Device } from './viewports';
@@ -28,7 +31,11 @@ export interface CaptureRequest {
   devices?: Device[];
   pageIds?: string[];
   options?: Record<string, unknown>;
+  /** SC-1: used for these captures only; kept in Redis for 15 minutes, never in Postgres. */
+  sessionCookie?: { name: string; value: string };
 }
+
+export const sessionKey = (captureId: string) => `${config.queuePrefix}:session:${captureId}`;
 
 /** Queues captures for the selected pages (or the given pages) at the given devices. */
 export async function requestCaptures(projectId: string, userId: string, req: CaptureRequest = {}): Promise<number> {
@@ -39,14 +46,19 @@ export async function requestCaptures(projectId: string, userId: string, req: Ca
     : await query('SELECT id FROM pages WHERE project_id = $1 AND selected ORDER BY "order"', [projectId]);
   if (!pages.length) return 0;
   await consumePages(userId, pages.length); // NF-RATE counts pages
+  const [{ workspace_id }] = await query('SELECT workspace_id FROM projects WHERE id = $1', [projectId]);
+  await useQuota(workspace_id, 'pages', pages.length); // SC-3 plan limits
+  const options = { ...(req.options ?? {}), ...(req.sessionCookie ? { authenticated: true } : {}) };
   for (const page of pages) {
     for (const device of devices) {
-      await query(
+      const [row] = await query(
         `INSERT INTO captures(page_id, device, mode, status, options) VALUES ($1,$2,$3,'queued',$4)
          ON CONFLICT (page_id, device, mode) DO UPDATE SET status = 'queued', error = NULL, job_id = NULL, source = 'auto',
-           options = EXCLUDED.options, updated_at = now()`,
-        [page.id, device, mode, JSON.stringify(req.options ?? {})],
+           options = EXCLUDED.options, updated_at = now()
+         RETURNING id`,
+        [page.id, device, mode, JSON.stringify(options)],
       );
+      if (req.sessionCookie) await redis().set(sessionKey(row.id), JSON.stringify(req.sessionCookie), 'EX', 900);
     }
   }
   await scheduleCaptures(projectId);

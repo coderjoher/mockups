@@ -6,6 +6,8 @@ import { getStorage } from '@mockups/core/storage';
 import { viewportsFor } from '@mockups/core/viewports';
 import { capturePage, explain } from './capture';
 import { captureCacheKey, findCached } from '@mockups/core/cache';
+import { sessionKey } from '@mockups/core/captures';
+import { redis } from '@mockups/core/queue';
 
 /** Captures every pending device of one page. Failures are stored per capture so one bad device or page never blocks the rest. */
 export async function captureJob(data: { jobId: string; projectId: string; pageId: string }, job?: Job) {
@@ -23,11 +25,14 @@ export async function captureJob(data: { jobId: string; projectId: string; pageI
     for (const c of captures) {
       await query("UPDATE captures SET status = 'running', error = NULL, updated_at = now() WHERE id = $1", [c.id]);
       const viewport = viewports[c.device as keyof typeof viewports];
-      const cacheKey = captureCacheKey(page.url, c.device, c.mode, viewport, c.options);
+      // SC-1: a session cookie is read once and deleted; such captures never use or fill the cache.
+      const secret = await redis().getdel(sessionKey(c.id));
+      const cookies = secret ? [JSON.parse(secret)] : undefined;
+      const cacheKey = c.options?.authenticated ? null : captureCacheKey(page.url, c.device, c.mode, viewport, c.options);
       const isHome = page.order === 0 && c.device === 'desktop';
       try {
         // CE-12: a capture of the same URL, viewport and options from the last 24 h is copied, not re-shot.
-        const hit = await findCached(cacheKey, c.id);
+        const hit = cacheKey ? await findCached(cacheKey, c.id) : undefined;
         if (hit) {
           if (isHome && hit.brand_colors?.length && !page.brand_colors?.length) {
             await query('UPDATE projects SET brand_colors = $2 WHERE id = $1', [data.projectId, JSON.stringify(hit.brand_colors)]);
@@ -40,7 +45,7 @@ export async function captureJob(data: { jobId: string; projectId: string; pageI
           );
           continue;
         }
-        const res = await capturePage(page.url, c.device, viewport, { ...c.options, mode: c.mode, brandColours: isHome });
+        const res = await capturePage(page.url, c.device, viewport, { ...c.options, mode: c.mode, brandColours: isHome && !cookies, cookies });
         if (res.brandColours?.length) await query('UPDATE projects SET brand_colors = $2 WHERE id = $1', [data.projectId, JSON.stringify(res.brandColours)]);
         const key = `captures/${data.projectId}/${data.pageId}/${c.device}-${c.mode}-${Date.now()}.png`;
         await getStorage().put(key, res.png, 'image/png');

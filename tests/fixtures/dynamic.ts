@@ -137,6 +137,12 @@ export const dynamicRoutes: Record<string, Route> = {
     </style></head><body><header><img id="logo" class="site-logo" src="/logo.svg" alt="Brand Co logo" width="160" height="60"></header>
     <section class="hero"><h1>Brand Co</h1><a class="btn" href="/contact">Get started</a> <a href="/about">About</a></section></body></html>`);
   },
+  // Phase 10: a members area behind a session cookie (SC-1).
+  members(req, res) {
+    const ok = /(^|;\s*)session=let-me-in-9f3c(;|$)/.test(req.headers.cookie ?? '');
+    const colour = ok ? '#16a34a' : '#dc2626';
+    return html(res, page(ok ? 'Your account' : 'Sign in', `<div style="height:2000px;background:${colour}">${ok ? 'Welcome back' : 'Please sign in'}</div>`));
+  },
   // Phase 3: capture fixtures.
   tall(_req, res) {
     return html(res, page('Tall', '<div style="height:30000px;background:linear-gradient(#fff,#000)"></div>'));

@@ -70,7 +70,7 @@ services:
     shm_size: 1gb
 
   render-worker:
-    build: { context: workers/render }
+    build: { context: ., dockerfile: workers/render/Dockerfile }
     environment: *app-env
     depends_on:
       migrate: { condition: service_completed_successfully }

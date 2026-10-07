@@ -121,7 +121,7 @@ export async function createBatch(projectId: string, mockupId: string, formats: 
   return out;
 }
 
-export const LAYOUTS = ['grid', 'tall'] as const;
+export const LAYOUTS = ['grid', 'tall', 'video'] as const;
 
 /** CR-5 / CX-2: photo-free layouts (grid collage of pages, or one full page in a tall frame). */
 export async function createLayoutRender(
@@ -135,7 +135,12 @@ export async function createLayoutRender(
   const ordered = captureIds.filter((id) => caps.some((c) => c.id === id));
   if (!ordered.length) throw new RenderError('Pick at least one finished capture');
   if (layout === 'tall' && ordered.length !== 1) throw new RenderError('The tall frame shows one page');
-  const options: Record<string, unknown> = { preview: !!style.preview, formats: style.formats ?? ['png'] };
+  if (layout === 'video') {
+    // EX-5: one full-page capture, scrolled inside a frame.
+    const [cap] = await query('SELECT mode FROM captures WHERE id = $1', [ordered[0]]);
+    if (ordered.length !== 1 || cap?.mode !== 'full') throw new RenderError('The scrolling video needs one full-page capture');
+  }
+  const options: Record<string, unknown> = { preview: !!style.preview, formats: layout === 'video' ? ['mp4'] : style.formats ?? ['png'] };
   if (style.bg !== undefined) options.bg = validateBackground(style.bg);
   if (style.padding !== undefined) options.padding = clampInt(style.padding, 0, 400, 'padding');
   if (style.shadow !== undefined) options.shadow = clampNum(style.shadow, 0, 1, 'shadow');
@@ -145,6 +150,7 @@ export async function createLayoutRender(
     options.logoKey = String(style.logoKey);
   }
   if (style.presets !== undefined) options.presets = validatePresets(style.presets);
+  if (layout === 'video') options.videoPreset = validatePresets([((style as any).videoPreset ?? 'slide')])[0];
   const render = (await one(
     'INSERT INTO renders(project_id, mockup_id, layout, assignments, options) VALUES ($1,NULL,$2,$3,$4) RETURNING *',
     [projectId, layout, JSON.stringify({ pages: ordered.slice(0, 12).map((captureId) => ({ captureId })) }), JSON.stringify(options)],

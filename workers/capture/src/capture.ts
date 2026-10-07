@@ -26,6 +26,8 @@ export interface CaptureOptions {
   fixStickyHeaders?: boolean;
   /** CX-3: also read the site's brand colours (used on the Home page). */
   brandColours?: boolean;
+  /** SC-1: session cookies for this capture only (set on the page's own origin). */
+  cookies?: { name: string; value: string }[];
 }
 
 export interface CaptureResult {
@@ -121,6 +123,7 @@ export async function capturePage(url: string, device: Device, viewport: Viewpor
   }, timeout + 1000);
   try {
     await guardRequests(context);
+    if (opts.cookies?.length) await context.addCookies(opts.cookies.map((c) => ({ name: c.name, value: c.value, url: new URL(url).origin })));
     await context.addInitScript(FREEZE_INIT);
     const page = await context.newPage();
     page.on('dialog', (d) => d.dismiss().catch(() => {}));

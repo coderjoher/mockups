@@ -15,11 +15,16 @@ export async function captureRoutes(app: FastifyInstance) {
     return project;
   };
 
-  app.post<{ Params: { id: string }; Body: { mode?: 'fold' | 'full'; devices?: Device[]; options?: Record<string, unknown> } }>('/projects/:id/captures', async (req, reply) => {
+  app.post<{ Params: { id: string }; Body: { mode?: 'fold' | 'full'; devices?: Device[]; options?: Record<string, unknown>; sessionCookie?: { name?: string; value?: string } } }>('/projects/:id/captures', async (req, reply) => {
     const project = await load(req);
-    const { mode, devices, options } = req.body ?? {};
+    const { mode, devices, options, sessionCookie } = req.body ?? {};
     if (devices && (!Array.isArray(devices) || devices.some((d) => !DEVICES.includes(d)))) throw new HttpError(400, 'Unknown device');
-    const pages = await requestCaptures(project.id, req.user!.id, { mode, devices, options: sanitiseOptions(options) });
+    // SC-1: a session cookie for pages behind a login.
+    if (sessionCookie && (!/^[A-Za-z0-9_.-]{1,100}$/.test(sessionCookie.name ?? '') || !/^[\x21-\x7e]{1,4096}$/.test(sessionCookie.value ?? '') || /[;,]/.test(sessionCookie.value ?? ''))) {
+      throw new HttpError(400, 'The session cookie needs a simple name and value', 'bad_cookie');
+    }
+    const cookie = sessionCookie ? { name: sessionCookie.name!, value: sessionCookie.value! } : undefined;
+    const pages = await requestCaptures(project.id, req.user!.id, { mode, devices, options: sanitiseOptions(options), sessionCookie: cookie });
     if (!pages) throw new HttpError(422, 'Select at least one page first', 'no_pages');
     return reply.status(202).send({ pages, captures: await listCaptures(project.id) });
   });

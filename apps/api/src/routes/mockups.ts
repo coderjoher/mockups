@@ -37,7 +37,8 @@ async function getScreensWithUrls(id: string) {
   return Promise.all(rows.map(async (s: any) => ({ ...s, mask_url: s.mask_key ? await getStorage().signedUrl(s.mask_key) : null })));
 }
 
-export async function mockupRoutes(app: FastifyInstance) {
+/** ML-1 / ML-3: the user-side library (published only, CP-8). Also served by the public API. */
+export async function libraryRoutes(app: FastifyInstance) {
   // ML-1: the user-side library (published only, CP-8).
   app.get<{ Querystring: Record<string, string> }>('/mockups', async (req) => {
     const user = await requireUser(req);
@@ -75,6 +76,11 @@ export async function mockupRoutes(app: FastifyInstance) {
     if (!m || (m.status !== 'published' && user.role !== 'admin')) throw new HttpError(404, 'Mockup not found');
     return { mockup: await full(m) };
   });
+
+}
+
+export async function mockupRoutes(app: FastifyInstance) {
+  await libraryRoutes(app);
 
   // Admin corner picker (CP-1..CP-8).
   app.get<{ Querystring: Record<string, string> }>('/admin/mockups', async (req) => {
