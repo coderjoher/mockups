@@ -334,6 +334,8 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 - I: plan limits and usage counters enforced; billing webhooks idempotent.
 - P: load test: 10 concurrent projects with 3 browser workers meets Phase 3 timings; adding a worker raises throughput.
 
+- [x] Gate 10 passed (`scripts/phase-gate.sh 10`): 176 Node, 36 Python and 21 E2E tests green across phases 0-10.
+
 ---
 
 ## Requirement → phase traceability

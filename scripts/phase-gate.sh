@@ -42,4 +42,4 @@ else
   npm run test:e2e  # Playwright end-to-end against the full stack
 fi
 
-echo "Gate $phase PASSED. Tick the exit criteria in docs/PHASES.md before starting phase $((phase + 1))."
+echo "Gate $phase PASSED. Tick the exit criteria in docs/PHASES.md$( (( phase < 10 )) && echo " before starting phase $((phase + 1))")."
