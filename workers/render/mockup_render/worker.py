@@ -6,22 +6,8 @@ import signal
 import psycopg
 from bullmq import Worker
 
-from . import config
-
-HANDLERS = {}
-
-
-def handler(kind):
-    def register(fn):
-        HANDLERS[kind] = fn
-        return fn
-
-    return register
-
-
-@handler("ping")
-def _ping(data):
-    return {"pong": data.get("value")}
+from . import config, jobs  # noqa: F401  (importing jobs registers its handlers)
+from .registry import HANDLERS
 
 
 def _db():
@@ -61,9 +47,6 @@ async def process(job, token=None):
 
 
 def make_worker(concurrency=2):
-    # Importing the render module registers its handlers.
-    from . import jobs  # noqa: F401
-
     return Worker(
         "render",
         process,

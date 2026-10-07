@@ -9,6 +9,7 @@ import { jobRoutes } from './routes/jobs';
 import { projectRoutes } from './routes/projects';
 import { pageRoutes } from './routes/pages';
 import { captureRoutes } from './routes/captures';
+import { mockupRoutes } from './routes/mockups';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -48,7 +49,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
     const status = err.statusCode ?? 500;
     if (status >= 500) app.log.error(err);
     if (err.retryAfterSeconds) reply.header('retry-after', Math.ceil(err.retryAfterSeconds));
-    reply.status(status).send({ error: err.code ?? 'error', message: status >= 500 ? 'Internal error' : err.message });
+    reply.status(status).send({ error: err.code ?? 'error', message: status >= 500 ? 'Internal error' : err.message, ...(err.details ? { details: err.details } : {}) });
   });
 
   app.get('/health', async () => ({ ok: true }));
@@ -58,5 +59,6 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(projectRoutes);
   await app.register(pageRoutes);
   await app.register(captureRoutes);
+  await app.register(mockupRoutes);
   return app;
 }

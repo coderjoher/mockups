@@ -22,6 +22,7 @@ npm ci && pip install -r workers/render/requirements.txt
 sudo scripts/install-fonts.sh               # Arabic fonts for captures
 # Postgres on :5432 and Redis on :6379 (or `docker compose up postgres redis`)
 npm run migrate && npm run seed              # admin@example.com / admin12345
+npm run seed:mockups                         # 12 placeholder mockup photos, published
 npm run dev:api & npm run dev:worker & npm run dev:render & npm run dev:web
 ```
 

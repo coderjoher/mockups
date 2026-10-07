@@ -203,6 +203,8 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 
 **Gate 5:** corner picker E2E green; ≥ 10 seed mockups published and validated by the test suite (every published mockup has licence info and valid screens).
 
+- [x] Gate 5 passed (`scripts/phase-gate.sh 5`). The 12 seed mockups are procedurally drawn placeholders (`npm run seed:mockups`), licensed in-house, to be replaced by real BeCorp photos.
+
 ---
 
 ## Phase 6: Render engine (warp + composite)
