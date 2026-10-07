@@ -124,5 +124,14 @@
     "attributionRequired": "Licence requires attribution",
     "saveDetails": "Save details",
     "back": "All mockup photos"
+  },
+  "mockup": {
+    "title": "Mockup",
+    "back": "Back to captures",
+    "rendering": "Rendering…",
+    "screen": "Screen {screen} ({device})",
+    "final": "Render full size",
+    "download": "Download PNG",
+    "change": "Choose another mockup"
   }
 }

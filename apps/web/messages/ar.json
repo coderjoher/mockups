@@ -124,5 +124,14 @@
     "attributionRequired": "الترخيص يتطلب الإسناد",
     "saveDetails": "حفظ التفاصيل",
     "back": "كل صور النماذج"
+  },
+  "mockup": {
+    "title": "النموذج",
+    "back": "العودة إلى اللقطات",
+    "rendering": "جارٍ التصيير…",
+    "screen": "الشاشة {screen} ({device})",
+    "final": "تصيير بالحجم الكامل",
+    "download": "تنزيل PNG",
+    "change": "اختر نموذجاً آخر"
   }
 }

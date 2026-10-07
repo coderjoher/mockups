@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '@/lib/api';
 import { Checklist } from './Checklist';
 import { Gallery } from './Gallery';
+import { MockupStep } from './MockupStep';
 
 export function ProjectClient({ id }: { id: string }) {
   const [project, setProject] = useState<any>(null);
@@ -19,6 +20,7 @@ export function ProjectClient({ id }: { id: string }) {
       </div>
       {step === 'pages' && <Checklist projectId={id} onNext={() => setStep('captures')} />}
       {step === 'captures' && <Gallery projectId={id} onBack={() => setStep('pages')} onNext={() => setStep('mockups')} />}
+      {step === 'mockups' && <MockupStep projectId={id} onBack={() => setStep('captures')} />}
     </div>
   );
 }

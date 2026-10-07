@@ -9,6 +9,7 @@ from psycopg.rows import dict_row
 from . import config
 from .storage import get_storage
 from .registry import handler
+from .render import Assignment, Scene, Screen, compose
 
 THUMB_LONG_SIDE = 800
 PREVIEW_LONG_SIDE = 1600  # CR-6: previews render at reduced size
@@ -54,3 +55,85 @@ def thumbnail(data):
         get_storage().put(key, encode(thumb, "jpg", 85), "image/jpeg")
         c.execute("UPDATE mockups SET thumb_key = %s WHERE id = %s", (key, m["id"]))
     return {"thumb": key}
+
+
+def _load_mask(buf: bytes) -> np.ndarray:
+    """Mask PNG: alpha channel if present, otherwise brightness (white = screen visible)."""
+    img = decode(buf, cv2.IMREAD_UNCHANGED)
+    if img.ndim == 3 and img.shape[2] == 4:
+        return img[:, :, 3]
+    if img.ndim == 3:
+        return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    return img
+
+
+def build_scene(c, mockup, use_overlay=True, use_light_map=True) -> Scene:
+    storage = get_storage()
+    rows = c.execute(
+        "SELECT screen_key, device, corners, corner_radius, mask_key, z_index FROM screens WHERE mockup_id = %s ORDER BY z_index, screen_key",
+        (mockup["id"],),
+    ).fetchall()
+    screens = [
+        Screen(
+            key=r["screen_key"],
+            device=r["device"],
+            corners=r["corners"],
+            corner_radius=float(r["corner_radius"]),
+            mask=_load_mask(storage.get(r["mask_key"])) if r["mask_key"] else None,
+            z_index=r["z_index"],
+        )
+        for r in rows
+    ]
+    return Scene(
+        photo=decode(storage.get(mockup["photo_key"]), cv2.IMREAD_COLOR),
+        screens=screens,
+        overlay=decode(storage.get(mockup["overlay_key"])) if use_overlay and mockup.get("overlay_key") else None,
+        light_map=decode(storage.get(mockup["light_map_key"]), cv2.IMREAD_COLOR) if use_light_map and mockup.get("light_map_key") else None,
+    )
+
+
+@handler("render")
+def render_job(data):
+    render_id = data["renderId"]
+    storage = get_storage()
+    with _db() as c:
+        r = c.execute("SELECT * FROM renders WHERE id = %s", (render_id,)).fetchone()
+        if not r:
+            return {"skipped": "render deleted"}
+        c.execute("UPDATE renders SET status = 'running', error = NULL WHERE id = %s", (render_id,))
+        try:
+            mockup = c.execute("SELECT * FROM mockups WHERE id = %s", (r["mockup_id"],)).fetchone()
+            if not mockup:
+                raise ValueError("The mockup was deleted")
+            opts = r["options"] or {}
+            scene = build_scene(c, mockup, opts.get("overlay", True), opts.get("lightMap", True))
+            assignments = {}
+            for screen_key, a in (r["assignments"] or {}).items():
+                cap = c.execute("SELECT image_key FROM captures WHERE id = %s AND status = 'done'", (a["captureId"],)).fetchone()
+                if cap and cap["image_key"]:
+                    assignments[screen_key] = Assignment(decode(storage.get(cap["image_key"]), cv2.IMREAD_UNCHANGED), int(a.get("scrollOffset") or 0))
+            h, w = scene.photo.shape[:2]
+            preview = bool(opts.get("preview"))
+            scale = min(1.0, PREVIEW_LONG_SIDE / max(w, h)) if preview else 1.0
+            out = compose(scene, assignments, scale)
+            outputs = {}
+            if preview:
+                key = f"renders/{r['project_id']}/{render_id}/preview.jpg"
+                storage.put(key, encode(out, "jpg", 85), "image/jpeg")
+                outputs["preview"] = key
+            else:
+                for fmt in opts.get("formats") or ["png"]:
+                    key = f"renders/{r['project_id']}/{render_id}/native.{fmt}"
+                    storage.put(key, encode(out, fmt, 90), CONTENT_TYPES[fmt])
+                    outputs[fmt] = key
+            c.execute(
+                "UPDATE renders SET status = 'done', outputs = %s WHERE id = %s",
+                (json.dumps(outputs), render_id),
+            )
+            return {"outputs": outputs, "width": out.shape[1], "height": out.shape[0]}
+        except Exception as err:
+            c.execute("UPDATE renders SET status = 'failed', error = %s WHERE id = %s", (str(err)[:500], render_id))
+            raise
+
+
+CONTENT_TYPES = {"png": "image/png", "jpg": "image/jpeg", "webp": "image/webp"}

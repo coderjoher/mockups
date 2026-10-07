@@ -230,6 +230,8 @@ Viewports: Desktop 1440×900 @2x → 2880×1800 · Tablet 834×1194 @2x → 1668
 
 **Gate 6:** golden images approved by a designer and committed; all render tests green.
 
+- [x] Gate 6 passed (`scripts/phase-gate.sh 6`). Goldens committed in `workers/render/tests/golden/`; designer sign-off on them is still to do. 6000 px photo: preview ~0.3 s, final ~4 s on the dev container.
+
 ---
 
 ## Phase 7: Export and MVP integration

@@ -63,17 +63,25 @@ def crop_to_aspect(img: np.ndarray, aspect: float, offset: int = 0) -> np.ndarra
 
 
 def rounded_rect_alpha(w: int, h: int, radius: float) -> np.ndarray:
-    """Float32 alpha (0..1) of a rounded rectangle with a 1 px anti-aliased edge."""
-    ys, xs = np.mgrid[0:h, 0:w].astype(np.float32)
-    xs += 0.5
-    ys += 0.5
+    """Float32 alpha (0..1) of a rounded rectangle with a 1 px anti-aliased edge.
+
+    Only the four corner patches differ from 1, so only they are computed (one patch, mirrored).
+    """
+    a = np.ones((h, w), np.float32)
     r = float(max(0.0, min(radius, w / 2, h / 2)))
     if r <= 0:
-        return np.ones((h, w), np.float32)
-    cx = np.clip(xs, r, w - r)
-    cy = np.clip(ys, r, h - r)
-    dist = np.sqrt((xs - cx) ** 2 + (ys - cy) ** 2)
-    return np.clip(r - dist + 0.5, 0.0, 1.0).astype(np.float32)
+        return a
+    n = min(int(np.ceil(r)) + 1, w, h)
+    ys, xs = np.mgrid[0:n, 0:n].astype(np.float32)
+    xs += 0.5
+    ys += 0.5
+    dist = np.sqrt((xs - np.maximum(xs, r)) ** 2 + (ys - np.maximum(ys, r)) ** 2)
+    patch = np.clip(r - dist + 0.5, 0.0, 1.0).astype(np.float32)
+    a[:n, :n] = np.minimum(a[:n, :n], patch)
+    a[:n, w - n :] = np.minimum(a[:n, w - n :], patch[:, ::-1])
+    a[h - n :, :n] = np.minimum(a[h - n :, :n], patch[::-1, :])
+    a[h - n :, w - n :] = np.minimum(a[h - n :, w - n :], patch[::-1, ::-1])
+    return a
 
 
 def homography(src_w: int, src_h: int, quad: np.ndarray) -> np.ndarray:
@@ -90,8 +98,8 @@ def _to_bgra(img: np.ndarray) -> np.ndarray:
     return img
 
 
-def warp_screen(capture: np.ndarray, screen: Screen, out_w: int, out_h: int, scroll_offset: int = 0) -> tuple[np.ndarray, np.ndarray]:
-    """Returns (warped BGR float32, alpha float32 0..1) at output size for one screen."""
+def warp_screen(capture: np.ndarray, screen: Screen, out_w: int, out_h: int, scroll_offset: int = 0) -> tuple[np.ndarray, np.ndarray, tuple[int, int]]:
+    """Warps one screen. Returns (BGR float32, alpha float32 0..1, (x0, y0)) covering only the screen's bounding box."""
     sw, sh = screen.size()
     crop = crop_to_aspect(_to_bgra(capture), sw / sh, scroll_offset)
     # Resample to about the on-photo size first (INTER_AREA avoids moire when shrinking), then warp bicubically.
@@ -103,45 +111,65 @@ def warp_screen(capture: np.ndarray, screen: Screen, out_w: int, out_h: int, scr
     if screen.mask is not None:
         m = cv2.resize(screen.mask, (tw, th), interpolation=cv2.INTER_LINEAR).astype(np.float32) / 255.0
         alpha *= m
-    H = homography(tw, th, screen.quad())
+    quad = screen.quad()
+    # Only the screen's bounding box (plus a margin for the soft edge) is warped and blended.
+    x0 = int(max(0, np.floor(quad[:, 0].min()) - 2))
+    y0 = int(max(0, np.floor(quad[:, 1].min()) - 2))
+    x1 = int(min(out_w, np.ceil(quad[:, 0].max()) + 3))
+    y1 = int(min(out_h, np.ceil(quad[:, 1].max()) + 3))
+    if x1 <= x0 or y1 <= y0:
+        return np.zeros((0, 0, 3), np.float32), np.zeros((0, 0), np.float32), (0, 0)
+    H = homography(tw, th, quad - np.array([x0, y0], np.float32))
     # Pad by one transparent pixel so the warp has a soft (anti-aliased) boundary instead of a hard cut (CR-1).
     pad = 1
     src_p = cv2.copyMakeBorder(src[:, :, :3], pad, pad, pad, pad, cv2.BORDER_REPLICATE)
     alpha_p = cv2.copyMakeBorder(alpha, pad, pad, pad, pad, cv2.BORDER_CONSTANT, value=0.0)
     shift = np.array([[1, 0, -pad], [0, 1, -pad], [0, 0, 1]], dtype=np.float64)
     Hp = H @ shift
-    color = cv2.warpPerspective(src_p, Hp, (out_w, out_h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
-    a = cv2.warpPerspective(alpha_p, Hp, (out_w, out_h), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
-    return color.astype(np.float32), np.clip(a, 0.0, 1.0)
+    size = (x1 - x0, y1 - y0)
+    color = cv2.warpPerspective(src_p, Hp, size, flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
+    a = cv2.warpPerspective(alpha_p, Hp, size, flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT, borderValue=0.0)
+    return color.astype(np.float32), np.clip(a, 0.0, 1.0), (x0, y0)
 
 
 def compose(scene: Scene, assignments: dict[str, Assignment], scale: float = 1.0) -> np.ndarray:
-    """Steps 4-6: base photo -> screens by z-index -> light map (multiply) -> overlay. Returns BGR uint8."""
+    """Steps 4-6: base photo -> screens by z-index -> light map (multiply) -> overlay. Returns BGR uint8.
+
+    The photo stays uint8; only each screen's bounding box is blended in float32, so a 6000 px photo stays fast.
+    """
     photo = scene.photo
     if scale != 1.0:
         photo = cv2.resize(photo, (max(1, round(photo.shape[1] * scale)), max(1, round(photo.shape[0] * scale))), interpolation=cv2.INTER_AREA)
     h, w = photo.shape[:2]
-    out = _to_bgra(photo)[:, :, :3].astype(np.float32)
+    out = photo.copy() if photo.ndim == 3 and photo.shape[2] == 3 else np.ascontiguousarray(_to_bgra(photo)[:, :, :3])
     light = None
     if scene.light_map is not None:
         lm = scene.light_map if scene.light_map.ndim == 3 else cv2.cvtColor(scene.light_map, cv2.COLOR_GRAY2BGR)
-        light = cv2.resize(lm[:, :, :3], (w, h), interpolation=cv2.INTER_AREA).astype(np.float32) / 255.0
+        light = cv2.resize(lm[:, :, :3], (w, h), interpolation=cv2.INTER_AREA)
     for screen in sorted(scene.screens, key=lambda s: (s.z_index, s.key)):
         a = assignments.get(screen.key)
         if a is None:
             continue
         s = screen if scale == 1.0 else _scaled(screen, scale)
-        color, alpha = warp_screen(a.image, s, w, h, int(round(a.scroll_offset * 1)))
+        color, alpha, (x0, y0) = warp_screen(a.image, s, w, h, a.scroll_offset)
+        if not alpha.size:
+            continue
+        ys, xs = slice(y0, y0 + alpha.shape[0]), slice(x0, x0 + alpha.shape[1])
         if light is not None:
-            color = color * light
+            color = color * (light[ys, xs].astype(np.float32) / 255.0)
         alpha3 = alpha[:, :, None]
-        out = out * (1.0 - alpha3) + color * alpha3
+        blended = out[ys, xs].astype(np.float32) * (1.0 - alpha3) + color * alpha3
+        out[ys, xs] = np.clip(np.rint(blended), 0, 255).astype(np.uint8)
     if scene.overlay is not None:
-        ov = _to_bgra(scene.overlay)
-        ov = cv2.resize(ov, (w, h), interpolation=cv2.INTER_AREA).astype(np.float32)
-        oa = ov[:, :, 3:4] / 255.0
-        out = out * (1.0 - oa) + ov[:, :, :3] * oa
-    return np.clip(np.rint(out), 0, 255).astype(np.uint8)
+        ov = cv2.resize(_to_bgra(scene.overlay), (w, h), interpolation=cv2.INTER_AREA)
+        nz = np.argwhere(ov[:, :, 3] > 0)
+        if len(nz):
+            (y0, x0), (y1, x1) = nz.min(0), nz.max(0) + 1
+            region = ov[y0:y1, x0:x1].astype(np.float32)
+            oa = region[:, :, 3:4] / 255.0
+            blended = out[y0:y1, x0:x1].astype(np.float32) * (1.0 - oa) + region[:, :, :3] * oa
+            out[y0:y1, x0:x1] = np.clip(np.rint(blended), 0, 255).astype(np.uint8)
+    return out
 
 
 def _scaled(screen: Screen, scale: float) -> Screen:
