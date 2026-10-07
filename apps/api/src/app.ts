@@ -6,6 +6,7 @@ import { findUser, type User } from '@mockups/core/users';
 import { authRoutes } from './routes/auth';
 import { fileRoutes } from './routes/files';
 import { jobRoutes } from './routes/jobs';
+import { projectRoutes } from './routes/projects';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -44,6 +45,7 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   app.setErrorHandler((err: any, _req, reply: FastifyReply) => {
     const status = err.statusCode ?? 500;
     if (status >= 500) app.log.error(err);
+    if (err.retryAfterSeconds) reply.header('retry-after', Math.ceil(err.retryAfterSeconds));
     reply.status(status).send({ error: err.code ?? 'error', message: status >= 500 ? 'Internal error' : err.message });
   });
 
@@ -51,5 +53,6 @@ export async function buildApp(opts: { logger?: boolean } = {}): Promise<Fastify
   await app.register(authRoutes);
   await app.register(fileRoutes);
   await app.register(jobRoutes);
+  await app.register(projectRoutes);
   return app;
 }

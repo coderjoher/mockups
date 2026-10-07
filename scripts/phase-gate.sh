@@ -37,6 +37,7 @@ echo "Every requirement in phases 0..$phase has a test."
 if [[ -n "${PHASE_GATE_TEST_CMD:-}" ]]; then
   bash -c "$PHASE_GATE_TEST_CMD"
 else
+  npm run typecheck
   npm test          # Node unit + integration, then Python (pytest)
   npm run test:e2e  # Playwright end-to-end against the full stack
 fi

@@ -94,6 +94,8 @@ every later feature inherits the guard.
 
 **Gate 1 (engineering):** all SSRF cases above blocked; rate limiter verified; tests green.
 
+- [x] Gate 1 passed (`scripts/phase-gate.sh 1`).
+
 ---
 
 ## Phase 2: Page discovery and checklist

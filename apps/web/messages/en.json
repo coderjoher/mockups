@@ -1,5 +1,29 @@
 {
-  "app": { "name": "Mockup Generator", "tagline": "Paste a link, get device mockups of every page." },
-  "nav": { "projects": "Projects", "library": "Mockup library", "admin": "Admin", "signOut": "Sign out", "language": "العربية" },
-  "login": { "title": "Sign in", "email": "Email", "password": "Password", "submit": "Sign in", "error": "Wrong email or password" }
+  "app": {
+    "name": "Mockup Generator",
+    "tagline": "Paste a link, get device mockups of every page."
+  },
+  "nav": {
+    "projects": "Projects",
+    "library": "Mockup library",
+    "admin": "Admin",
+    "signOut": "Sign out",
+    "language": "العربية"
+  },
+  "login": {
+    "title": "Sign in",
+    "email": "Email",
+    "password": "Password",
+    "submit": "Sign in",
+    "error": "Wrong email or password"
+  },
+  "home": {
+    "title": "New mockup set",
+    "placeholder": "Paste a website link, e.g. example.com",
+    "start": "Start",
+    "checking": "Checking the site…",
+    "recent": "Your projects",
+    "empty": "No projects yet.",
+    "pages": "{n} pages selected"
+  }
 }

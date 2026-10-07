@@ -11,7 +11,8 @@
     "@aws-sdk/s3-request-presigner": "^3.1147.0",
     "bullmq": "^6.3.11",
     "ioredis": "^6.0.0",
-    "pg": "^8.23.1"
+    "pg": "^8.23.1",
+    "undici": "^8.11.2"
   },
   "devDependencies": {
     "@types/pg": "^8.23.1"

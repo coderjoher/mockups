@@ -12,6 +12,7 @@ const env = {
   HOST: '127.0.0.1',
   JOB_BACKOFF_MS: '200',
   E2E: '1',
+  FIXTURE_HOSTS: 'fixture.test=127.0.0.1',
 };
 Object.assign(process.env, env);
 
